@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="Ricochet/Ricochet.vcxproj" Id="81a766d8-3d91-4ac5-863e-8172f5a1f14d" />
+</Solution>

@@ -1,0 +1,259 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>18.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{81a766d8-3d91-4ac5-863e-8172f5a1f14d}</ProjectGuid>
+    <RootNamespace>Ricochet</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+    <Manifest>
+      <EnableSegmentHeap>true</EnableSegmentHeap>
+    </Manifest>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+    <Manifest>
+      <EnableSegmentHeap>true</EnableSegmentHeap>
+    </Manifest>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp23</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir)/SFML-3.0.1/include</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(ProjectDir)/SFML-3.0.1/lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>sfml-system-d.lib;sfml-window-d.lib;sfml-graphics-d.lib;sfml-audio-d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <Manifest>
+      <EnableSegmentHeap>true</EnableSegmentHeap>
+    </Manifest>
+    <PostBuildEvent>
+      <Command>xcopy /y /d /s /i "$(ProjectDir)\SFML-3.0.1\bin\*.dll" "$(TargetDir)"</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+    <Manifest>
+      <EnableSegmentHeap>true</EnableSegmentHeap>
+    </Manifest>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="action.hpp" />
+    <ClInclude Include="aircraft.hpp" />
+    <ClInclude Include="aircraft_type.hpp" />
+    <ClInclude Include="animation.hpp" />
+    <ClInclude Include="application.hpp" />
+    <ClInclude Include="bloom_effect.hpp" />
+    <ClInclude Include="button.hpp" />
+    <ClInclude Include="button_type.hpp" />
+    <ClInclude Include="command.hpp" />
+    <ClInclude Include="command_queue.hpp" />
+    <ClInclude Include="component.hpp" />
+    <ClInclude Include="constants.hpp" />
+    <ClInclude Include="container.hpp" />
+    <ClInclude Include="data_tables.hpp" />
+    <ClInclude Include="emitter_node.hpp" />
+    <ClInclude Include="entity.hpp" />
+    <ClInclude Include="fontID.hpp" />
+    <ClInclude Include="game_over_state.hpp" />
+    <ClInclude Include="game_state.hpp" />
+    <ClInclude Include="label.hpp" />
+    <ClInclude Include="menu_options.hpp" />
+    <ClInclude Include="menu_state.hpp" />
+    <ClInclude Include="mission_status.hpp" />
+    <ClInclude Include="movement_controller.hpp" />
+    <ClInclude Include="music_player.hpp" />
+    <ClInclude Include="music_themes.hpp" />
+    <ClInclude Include="particle.hpp" />
+    <ClInclude Include="particletype.hpp" />
+    <ClInclude Include="particle_node.hpp" />
+    <ClInclude Include="pause_state.hpp" />
+    <ClInclude Include="pickup.hpp" />
+    <ClInclude Include="pickup_type.hpp" />
+    <ClInclude Include="player.hpp" />
+    <ClInclude Include="posteffect.hpp" />
+    <ClInclude Include="projectile.hpp" />
+    <ClInclude Include="projectile_type.hpp" />
+    <ClInclude Include="receiver_categories.hpp" />
+    <ClInclude Include="resource_holder.hpp" />
+    <ClInclude Include="resource_identifiers.hpp" />
+    <ClInclude Include="scene_layers.hpp" />
+    <ClInclude Include="scene_node.hpp" />
+    <ClInclude Include="settings_state.hpp" />
+    <ClInclude Include="shader_types.hpp" />
+    <ClInclude Include="sound_effect.hpp" />
+    <ClInclude Include="sound_node.hpp" />
+    <ClInclude Include="sound_player.hpp" />
+    <ClInclude Include="sprite_node.hpp" />
+    <ClInclude Include="stack_actions.hpp" />
+    <ClInclude Include="state.hpp" />
+    <ClInclude Include="stateid.hpp" />
+    <ClInclude Include="statestack.hpp" />
+    <ClInclude Include="texture_holder.hpp" />
+    <ClInclude Include="text_node.hpp" />
+    <ClInclude Include="title_state.hpp" />
+    <ClInclude Include="utility.hpp" />
+    <ClInclude Include="weapon_system.hpp" />
+    <ClInclude Include="world.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="aircraft.cpp" />
+    <ClCompile Include="animation.cpp" />
+    <ClCompile Include="application.cpp" />
+    <ClCompile Include="bloom_effect.cpp" />
+    <ClCompile Include="button.cpp" />
+    <ClCompile Include="command.cpp" />
+    <ClCompile Include="command_queue.cpp" />
+    <ClCompile Include="component.cpp" />
+    <ClCompile Include="container.cpp" />
+    <ClCompile Include="data_tables.cpp" />
+    <ClCompile Include="emitter_node.cpp" />
+    <ClCompile Include="entity.cpp" />
+    <ClCompile Include="game_over_state.cpp" />
+    <ClCompile Include="game_state.cpp" />
+    <ClCompile Include="label.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="menu_state.cpp" />
+    <ClCompile Include="MissionStatus.cpp" />
+    <ClCompile Include="movement_controller.cpp" />
+    <ClCompile Include="music_player.cpp" />
+    <ClCompile Include="particle.cpp" />
+    <ClCompile Include="particle_node.cpp" />
+    <ClCompile Include="pause_state.cpp" />
+    <ClCompile Include="pickup.cpp" />
+    <ClCompile Include="player.cpp" />
+    <ClCompile Include="posteffect.cpp" />
+    <ClCompile Include="projectile.cpp" />
+    <ClCompile Include="scene_node.cpp" />
+    <ClCompile Include="settings_state.cpp" />
+    <ClCompile Include="shader_types.cpp" />
+    <ClCompile Include="sound_node.cpp" />
+    <ClCompile Include="sound_player.cpp" />
+    <ClCompile Include="sprite_node.cpp" />
+    <ClCompile Include="state.cpp" />
+    <ClCompile Include="statestack.cpp" />
+    <ClCompile Include="texture_holder.cpp" />
+    <ClCompile Include="texture_id.hpp" />
+    <ClCompile Include="text_node.cpp" />
+    <ClCompile Include="title_state.cpp" />
+    <ClCompile Include="utility.cpp" />
+    <ClCompile Include="weapon_system.cpp" />
+    <ClCompile Include="world.cpp" />
+    <ClCompile Include="collision_handler.cpp" xmlns="" />
+    <ClCompile Include="gameplay_manager.cpp" xmlns="" />
+    <ClCompile Include="physics_simulator.cpp" xmlns="" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="resource_holder.inl" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
