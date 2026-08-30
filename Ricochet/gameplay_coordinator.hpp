@@ -3,6 +3,7 @@
 #include <memory>
 #include "command_queue.hpp"
 #include "resource_identifiers.hpp"
+#include "pickup_type.hpp"
 
 class Aircraft;
 class SceneNode;
@@ -31,14 +32,6 @@ public:
 
 	// Player respawning
 	void RespawnDeadPlayers(const sf::Vector2f& spawn_pos_p1, const sf::Vector2f& spawn_pos_p2);
-
-	// Tracked opponent accessor
-	Aircraft* GetTrackedOpponent() const;
-
-private:
-	void GuideMissiles();
-	void TrackPlayers();
-	void SpawnRandomPickups();
 
 private:
 	// References to game objects

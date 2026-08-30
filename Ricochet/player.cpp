@@ -326,6 +326,7 @@ bool Player::IsRealTimeAction(Action action)
         return false;
     }
 }
+
 void Player::DisableAllRealtimeActions(bool enable)
 {
     for (auto& action : m_action_proxies)
@@ -337,4 +338,14 @@ void Player::DisableAllRealtimeActions(bool enable)
         packet << enable;
         m_socket->send(packet);
     }
+}
+
+void Player::HandleNetworkEvent(Action action, CommandQueue& commands)
+{
+    commands.Push(m_action_binding[action]);
+}
+
+void Player::HandleNetworkRealtimeChange(Action action, bool actionEnabled)
+{
+    m_action_proxies[action] = actionEnabled;
 }

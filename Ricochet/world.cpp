@@ -34,6 +34,7 @@ World::World(sf::RenderTarget& output_target, FontHolder& font, SoundPlayer& sou
 	, m_collision_handler(nullptr)
 	, m_gameplay_manager(nullptr)
 	, m_physics_simulator(nullptr)
+	, m_network_node(nullptr)
 {
 	m_scene_texture.resize({ m_target.getSize().x, m_target.getSize().y });
 	LoadTextures();
@@ -333,3 +334,4 @@ bool World::PollGameAction(GameActions::Action& out)
 {
 	return m_network_node->PollGameAction(out);
 }
+

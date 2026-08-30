@@ -456,7 +456,8 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 		auto itr = m_players.find(aircraft_identifier);
 		if (itr != m_players.end())
 		{
-			itr->second->HandleNetworkEvent(static_cast<Action>(action), m_world.GetCommandQueue());
+			itr->second->HandleNetworkEvent(static_cast<Action>(action)
+			, m_world.GetCommandQueue());
 		}
 	}
 	break;
@@ -477,18 +478,6 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 	}
 	break;
 
-	//New Enemy to be created
-	case Server::PacketType::kSpawnEnemy:
-	{
-		float height;
-		uint8_t type;
-		float relative_x;
-		packet >> type >> height >> relative_x;
-
-		m_world.AddEnemy(static_cast<AircraftType>(type), relative_x, height);
-		m_world.SortEnemies();
-	}
-	break;
 
 	//Mission Successfully completed
 	case Server::PacketType::kMissionSuccess:
@@ -503,7 +492,7 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 		uint8_t type;
 		sf::Vector2f position;
 		packet >> type >> position.x >> position.y;
-		m_world.CreatePickup(position, static_cast<PickupType>(type));
+		m_world.SpawnRandomPickups();
 	}
 	break;
 

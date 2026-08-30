@@ -33,7 +33,10 @@ public:
 	int GetPlayer1Kills() const;
 	int GetPlayer2Kills() const;
 
+	//Multiplayer Additions
 	void DisableAllRealtimeActions(bool enable);
+	void HandleNetworkEvent(Action action, CommandQueue& commands);
+	void HandleNetworkRealtimeChange(Action action, bool action_enabled);
 
 private:
 	void InitialiseActions();

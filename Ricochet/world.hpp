@@ -14,6 +14,7 @@
 #include "gameplay_manager.hpp"
 #include "physics_simulator.hpp"
 #include "network_node.hpp"
+#include "gameplay_coordinator.hpp"
 
 class World
 {
@@ -32,13 +33,14 @@ public:
 	void IncrementPlayer1Kills();
 	void IncrementPlayer2Kills();
 
+	void SpawnRandomPickups();
+
 	// Multiplayer aircraft management
 	Aircraft* GetAircraft(uint8_t aircraft_id);
 	Aircraft* AddAircraft(uint8_t aircraft_id, PlayerID player_id = PlayerID::kPlayer1);
 	void RemoveAircraft(uint8_t aircraft_id);
 
 	bool PollGameAction(GameActions::Action& out);
-
 
 private:
 	void LoadTextures();
@@ -47,7 +49,7 @@ private:
 	void KillGUI();
 
 	void UpdateSounds();
-	void SpawnRandomPickups();
+	
 
 
 private:
@@ -84,7 +86,8 @@ private:
 	std::unique_ptr<GameplayManager> m_gameplay_manager;
 	std::unique_ptr<PhysicsSimulator> m_physics_simulator;
 
-	// Multiplayer aircraft tracking: maps aircraft ID to aircraft pointer
+	// Multiplayer 
 	std::map<uint8_t, Aircraft*> m_networked_aircraft;
+	NetworkNode* m_network_node;
 };
 

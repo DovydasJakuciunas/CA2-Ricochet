@@ -70,7 +70,6 @@ void GameplayCoordinator::Update(sf::Time dt)
 		}
 	}
 
-	SpawnRandomPickups();
 
 	// Use physics simulator for physics updates
 	if (m_physics_simulator)
@@ -118,44 +117,5 @@ void GameplayCoordinator::RespawnDeadPlayers(const sf::Vector2f& spawn_pos_p1, c
 	{
 		m_player2->Respawn();
 		m_player2->setPosition(spawn_pos_p2);
-	}
-}
-
-Aircraft* GameplayCoordinator::GetTrackedOpponent() const
-{
-	return m_tracked_opponent;
-}
-
-void GameplayCoordinator::SpawnRandomPickups()
-{
-	// Spawn pickups every 3 seconds using a fixed timer
-	m_pickup_spawn_timer -= sf::seconds(1.f / 60.f);  // Assuming 60 FPS
-
-	if (m_pickup_spawn_timer <= sf::Time::Zero)
-	{
-		m_pickup_spawn_timer = sf::seconds(3.f);  // Reset timer to 3 seconds
-
-		// Compute view bounds directly
-		sf::FloatRect view_bounds(m_camera.getCenter() - m_camera.getSize() / 2.f, m_camera.getSize());
-
-		// Add a border margin to keep pickups away from edges
-		const float border = 50.f;
-		sf::FloatRect spawn_area(
-			sf::Vector2f(view_bounds.position.x + border, view_bounds.position.y + border),
-			sf::Vector2f(view_bounds.size.x - (border * 2.f), view_bounds.size.y - (border * 2.f))
-		);
-
-		// Random pickup type
-		PickupType type = static_cast<PickupType>(Utility::RandomInt(static_cast<int>(PickupType::kPickupCount)));
-
-		// Spawn at random position within camera view (with border)
-		float random_x = spawn_area.position.x + Utility::RandomInt(static_cast<int>(spawn_area.size.x));
-		float random_y = spawn_area.position.y + Utility::RandomInt(static_cast<int>(spawn_area.size.y));
-
-		std::unique_ptr<Pickup> pickup(new Pickup(type, m_textures));
-		pickup->setPosition(sf::Vector2f(random_x, random_y));
-		pickup->SetVelocity(0.f, 0.f);
-
-		m_upper_air_layer->AttachChild(std::move(pickup));
 	}
 }
