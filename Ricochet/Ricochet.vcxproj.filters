@@ -192,6 +192,21 @@
     <ClInclude Include="movement_controller.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="collision_handler.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="gameplay_coordinator.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="gameplay_manager.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="physics_simulator.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="network_protocol.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -287,9 +302,6 @@
     <ClCompile Include="emitter_node.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="MissionStatus.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="music_player.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -300,9 +312,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="posteffect.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="shader_types.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="sound_node.cpp">
@@ -318,6 +327,18 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="movement_controller.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="collision_handler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="gameplay_coordinator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="gameplay_manager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="physics_simulator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
