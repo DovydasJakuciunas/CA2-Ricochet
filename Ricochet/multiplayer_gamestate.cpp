@@ -479,10 +479,10 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 	break;
 
 
-	//Mission Successfully completed
+	//Should tell what player has won and how many points
 	case Server::PacketType::kMissionSuccess:
 	{
-		RequestStackPush(StateID::kMissionSuccess);
+		RequestStackPush(StateID::kGameOver);
 	}
 	break;
 

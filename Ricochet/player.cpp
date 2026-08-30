@@ -2,6 +2,7 @@
 #include "aircraft.hpp"
 #include "movement_controller.hpp"
 #include "weapon_system.hpp"
+#include "gameplay_manager.hpp"
 #include <cmath>
 
 struct AircraftMover
@@ -130,21 +131,10 @@ Player::Player(sf::TcpSocket* socket, uint8_t identifier, const KeyBinding* bind
     */
     InitialiseActions();
 
-    for (auto& pair : m_action_binding)
-    {
-        pair.second.category = static_cast<unsigned int>(ReceiverCategories::kPlayerAircraft);
-    }
-
-	//TODO - Rewrite so it fits the class 
-    /* 
-    // Don't set category here - it will be set based on player_id when commands are created
-    m_was_forward_pressed_p1 = false;
-    m_was_forward_pressed_p2 = false;
-
-    // Initialize kill counts
-    m_player1_kills = 0;
-    m_player2_kills = 0;
-    */
+	for (auto& pair : m_action_binding)
+	{
+		pair.second.category = static_cast<unsigned int>(ReceiverCategories::kPlayerAircraft);
+	}
 }
 
 void Player::HandleEvent(const sf::Event& event, CommandQueue& command_queue, PlayerID player_id)
@@ -276,24 +266,14 @@ MissionStatus Player::GetMissionStatus(PlayerID player_id) const
     return (player_id == PlayerID::kPlayer1) ? m_current_mission_status_p1 : m_current_mission_status_p2;
 }
 
-void Player::SetPlayer1Kills(int kills)
+int Player::GetPlayerKills(uint8_t playerID, GameplayManager& gameplayMgr) const
 {
-    m_player1_kills = kills;
+    return gameplayMgr.GetPlayerKills(playerID);
 }
 
-void Player::SetPlayer2Kills(int kills)
+const std::map<uint8_t, int>& Player::GetAllPlayerKills(GameplayManager& gameplayMgr) const
 {
-    m_player2_kills = kills;
-}
-
-int Player::GetPlayer1Kills() const
-{
-    return m_player1_kills;
-}
-
-int Player::GetPlayer2Kills() const
-{
-    return m_player2_kills;
+    return gameplayMgr.GetAllPlayerKills();
 }
 
 void Player::InitialiseActions()

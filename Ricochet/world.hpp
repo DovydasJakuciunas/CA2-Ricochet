@@ -14,7 +14,6 @@
 #include "gameplay_manager.hpp"
 #include "physics_simulator.hpp"
 #include "network_node.hpp"
-#include "gameplay_coordinator.hpp"
 
 class World
 {

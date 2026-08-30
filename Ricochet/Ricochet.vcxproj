@@ -225,9 +225,9 @@
     <ClCompile Include="container.cpp" />
     <ClCompile Include="data_tables.cpp" />
     <ClCompile Include="gameplay_coordinator.cpp" />
-    <ClCompile Include="gameplay_manager.cpp" />
     <ClCompile Include="emitter_node.cpp" />
     <ClCompile Include="entity.cpp" />
+    <ClCompile Include="gameplay_manager.cpp" />
     <ClCompile Include="game_over_state.cpp" />
     <ClCompile Include="game_server.cpp" />
     <ClCompile Include="game_state.cpp" />

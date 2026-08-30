@@ -9,7 +9,20 @@ class SceneNode;
 enum class PlayerID
 {
 	kPlayer1,
-	kPlayer2
+	kPlayer2,
+	kPlayer3,
+	kPlayer4,
+	kPlayer5,
+	kPlayer6,
+	kPlayer7,
+	kPlayer8,
+	kPlayer9,
+	kPlayer10,
+	kPlayer11,
+	kPlayer12,
+	kPlayer13,
+	kPlayer14,
+	kPlayer15
 };
 
 struct Command

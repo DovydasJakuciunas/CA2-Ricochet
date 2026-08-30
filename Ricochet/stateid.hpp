@@ -9,5 +9,4 @@ enum class StateID
 	kSettings,
 	kGameOver,
 	kNetworkPause
-	
 };

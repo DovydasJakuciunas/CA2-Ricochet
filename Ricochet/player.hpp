@@ -13,7 +13,8 @@
 #include "network_protocol.hpp"
 #include <SFML/Network/Packet.hpp>
 
-
+// Forward declaration
+class GameplayManager;
 
 class Player
 {
@@ -27,11 +28,9 @@ public:
 	void SetMissionStatus(MissionStatus status, PlayerID player_id = PlayerID::kPlayer1);
 	MissionStatus GetMissionStatus(PlayerID player_id = PlayerID::kPlayer1) const;
 
-	// PvP score tracking
-	void SetPlayer1Kills(int kills);
-	void SetPlayer2Kills(int kills);
-	int GetPlayer1Kills() const;
-	int GetPlayer2Kills() const;
+	// PvP score tracking - Gets from GameplayManager
+	int GetPlayerKills(uint8_t playerID, GameplayManager& gameplayMgr) const;
+	const std::map<uint8_t, int>& GetAllPlayerKills(GameplayManager& gameplayMgr) const;
 
 	//Multiplayer Additions
 	void DisableAllRealtimeActions(bool enable);
@@ -50,10 +49,6 @@ private:
 	MissionStatus m_current_mission_status_p2;
 	bool m_was_forward_pressed_p1;
 	bool m_was_forward_pressed_p2;
-
-	// PvP score tracking
-	int m_player1_kills;
-	int m_player2_kills;
 
 	//Multiplayer Additions
 private:

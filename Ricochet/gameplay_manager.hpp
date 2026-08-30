@@ -1,6 +1,9 @@
 #pragma once
 #include <SFML/System/Time.hpp>
 #include <SFML/System/Vector2.hpp>
+#include <SFML/Graphics/Color.hpp>
+#include <map>
+#include <cstdint>
 
 class Aircraft;
 class TextNode;
@@ -8,29 +11,34 @@ class TextNode;
 class GameplayManager
 {
 public:
-	GameplayManager(Aircraft* player1, Aircraft* player2, TextNode* kill_display1, TextNode* kill_display2);
+	GameplayManager();
+
+	// Player registration/unregistration
+	void RegisterPlayer(uint8_t playerID, TextNode* kill_display);
+	void UnregisterPlayer(uint8_t playerID);
 
 	// Kill tracking
-	int GetPlayer1Kills() const;
-	int GetPlayer2Kills() const;
-	void IncrementPlayer1Kills();
-	void IncrementPlayer2Kills();
+	void IncrementPlayerKills(uint8_t playerID);
+	int GetPlayerKills(uint8_t playerID) const;
+	const std::map<uint8_t, int>& GetAllPlayerKills() const;
+
+	// Last damager tracking (for kill attribution)
+	void SetPlayerLastDamager(uint8_t targetID, uint8_t damagerID);
+
+	// Called when a player dies - awards kill to last damager
+	void OnPlayerDeath(uint8_t playerID);
 
 	// Player state tracking
-	void Update(Aircraft* player1, Aircraft* player2);
+	void Update();
 
 private:
-	void UpdateKillDisplay(TextNode* display, int kill_count);
-	// Kill counts
-	int m_player1_kills;
-	int m_player2_kills;
+	void UpdateKillDisplay(uint8_t playerID, int kill_count);
 
-	// Player alive status tracking (for detecting transitions)
-	bool m_player1_was_alive;
-	bool m_player2_was_alive;
-
-	// UI references
-	TextNode* m_player1_kill_display;
-	TextNode* m_player2_kill_display;
+	// Multi-player kill tracking - Maps playerID to data
+	std::map<uint8_t, int> m_player_kills;
+	std::map<uint8_t, TextNode*> m_player_kill_displays;
+	std::map<uint8_t, bool> m_player_was_alive;
+	std::map<uint8_t, uint8_t> m_last_damager;
+	std::map<uint8_t, sf::Color> m_player_colors;
 
 };

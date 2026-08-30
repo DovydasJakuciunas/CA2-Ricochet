@@ -347,9 +347,6 @@
     <ClCompile Include="gameplay_coordinator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="gameplay_manager.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="physics_simulator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -363,6 +360,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="key_binding.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="gameplay_manager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
