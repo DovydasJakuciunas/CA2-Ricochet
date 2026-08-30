@@ -498,14 +498,8 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 
 	case Server::PacketType::kUpdateClientState:
 	{
-		float current_world_position;
 		uint8_t aircraft_count;
-		packet >> current_world_position >> aircraft_count;
-
-		float current_view_position = m_world.GetViewBounds().position.y + m_world.GetViewBounds().size.y;
-
-		//Set the world's scroll compensation according to whether the view is behind or ahead
-		m_world.SetWorldScrollCompensation(current_view_position / current_world_position);
+		packet >> aircraft_count;
 
 		for (uint8_t i = 0; i < aircraft_count; ++i)
 		{
@@ -522,7 +516,7 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 				sf::Vector2f interpolated_position = aircraft->getPosition() + (aircraft_position - aircraft->getPosition()) * 0.1f;
 				aircraft->setPosition(interpolated_position);
 				aircraft->SetHitpoints(hitpoints);
-				aircraft->SetMissileAmmo(ammo);
+				aircraft->GetWeaponSystem().SetMissileAmmo(ammo);
 			}
 		}
 	}
