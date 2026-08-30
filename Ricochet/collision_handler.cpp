@@ -9,10 +9,9 @@
 #include "weapon_system.hpp"
 #include <cmath>
 
-CollisionHandler::CollisionHandler(Aircraft* player1, Aircraft* player2, SceneNode& scene_graph,
+CollisionHandler::CollisionHandler(const std::vector<Aircraft*>& players, SceneNode& scene_graph,
 								   CommandQueue& command_queue, SoundPlayer& sounds)
-	: m_player1(player1)
-	, m_player2(player2)
+	: m_players(players)
 	, m_scene_graph(scene_graph)
 	, m_command_queue(command_queue)
 	, m_sounds(sounds)

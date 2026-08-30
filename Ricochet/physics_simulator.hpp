@@ -1,5 +1,6 @@
 #pragma once
 #include <SFML/Graphics.hpp>
+#include <vector>
 #include "command_queue.hpp"
 
 class Aircraft;
@@ -15,7 +16,7 @@ public:
 	void BounceEntity(SceneNode* entity);
 
 	// Player boundary collision handling
-	void HandlePlayerBoundaryCollision(Aircraft* player1, Aircraft* player2);
+	void HandlePlayerBoundaryCollision(const std::vector<Aircraft*>& players);
 
 	// View and bounds getters
 	sf::FloatRect GetViewBounds() const;

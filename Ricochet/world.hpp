@@ -26,12 +26,6 @@ public:
 
 	bool HasAlivePlayer() const;
 
-	// Kill tracking
-	int GetPlayer1Kills() const;
-	int GetPlayer2Kills() const;
-	void IncrementPlayer1Kills();
-	void IncrementPlayer2Kills();
-
 	void SpawnRandomPickups();
 
 	// Multiplayer aircraft management
@@ -45,9 +39,11 @@ private:
 	void LoadTextures();
 	void BuildScene();
 
-	void KillGUI();
-
 	void UpdateSounds();
+
+	// Spawn point management
+	void GenerateSpawnPoints();
+	sf::Vector2f GetNextSpawnPoint();
 	
 
 
@@ -61,17 +57,6 @@ private:
 	SceneNode m_scene_graph;
 	std::array<SceneNode*, static_cast<int>(SceneLayers::kLayerCount)> m_scene_layers;
 	sf::FloatRect m_world_bounds;
-	sf::Vector2f m_spawn_position;
-	sf::Vector2f m_spawn_position_p2;
-	Aircraft* m_player_aircraft;
-	Aircraft* m_player_aircraft_p2;
-
-	// Kill count UI
-	std::unique_ptr<TextNode> m_player1_kill_display;
-	std::unique_ptr<TextNode> m_player2_kill_display;
-
-	// Tracked opponent
-	Aircraft* m_tracked_opponent;
 
 	CommandQueue m_command_queue;
 	Command m_command;
@@ -85,8 +70,11 @@ private:
 	std::unique_ptr<GameplayManager> m_gameplay_manager;
 	std::unique_ptr<PhysicsSimulator> m_physics_simulator;
 
-	// Multiplayer 
+	// Multiplayer aircraft management - Player 1 = ID 0, Player 2 = ID 1
 	std::map<uint8_t, Aircraft*> m_networked_aircraft;
 	NetworkNode* m_network_node;
-};
 
+	// Dynamic spawn point management
+	std::vector<sf::Vector2f> m_spawn_points;
+	size_t m_next_spawn_point_index;
+};

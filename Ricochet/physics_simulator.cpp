@@ -27,16 +27,14 @@ sf::FloatRect PhysicsSimulator::GetBattleFieldBounds() const
 	return bounds;
 }
 
-void PhysicsSimulator::HandlePlayerBoundaryCollision(Aircraft* player1, Aircraft* player2)
+void PhysicsSimulator::HandlePlayerBoundaryCollision(const std::vector<Aircraft*>& players)
 {
-	if (player1)
+	for (Aircraft* player : players)
 	{
-		BounceAircraftOffWall(player1);
-	}
-
-	if (player2)
-	{
-		BounceAircraftOffWall(player2);
+		if (player)
+		{
+			BounceAircraftOffWall(player);
+		}
 	}
 }
 
