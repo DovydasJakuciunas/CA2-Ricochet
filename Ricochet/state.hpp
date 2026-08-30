@@ -8,6 +8,7 @@
 #include "sound_player.hpp"
 
 class StateStack;
+class KeyBinding;
 
 
 class State
@@ -18,7 +19,7 @@ public:
 	struct Context
 	{
 		Context(sf::RenderWindow& window, TextureHolder& textures, FontHolder& fonts, Player& player, MusicPlayer& music, SoundPlayer& sound, class World* world = nullptr);
-		//TODO unique_ptr rather than raw pointers here?
+
 		sf::RenderWindow* window;
 		TextureHolder* textures;
 		FontHolder* fonts;
@@ -26,6 +27,8 @@ public:
 		MusicPlayer* music;
 		SoundPlayer* sound;
 		World* world;
+		KeyBinding* keys1;	//Local Player for player 1 and 2 created
+		KeyBinding* keys2;
 	};
 
 public:

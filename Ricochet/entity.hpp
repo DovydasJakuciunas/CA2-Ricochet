@@ -13,6 +13,7 @@ public:
 	void Accelerate(float vx, float vy);
 
 	int GetHitPoints() const;
+	void SetHitpoints(int hitpoints);
 	void Repair(int points);
 	void Damage(int points);
 	void Destroy();

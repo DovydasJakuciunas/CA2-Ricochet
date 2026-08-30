@@ -10,12 +10,15 @@
 #include <cmath>
 #include <SFML/Network/TcpSocket.hpp>
 #include "key_binding.hpp"
+#include "network_protocol.hpp"
+#include <SFML/Network/Packet.hpp>
+
 
 
 class Player
 {
 public:
-	Player();
+	Player(sf::TcpSocket* socket, uint8_t identifier, const KeyBinding* binding);
 	void HandleEvent(const sf::Event& event, CommandQueue& command_queue, PlayerID player_id = PlayerID::kPlayer1);
 	void HandleRealTimeInput(CommandQueue& command_queue, PlayerID player_id = PlayerID::kPlayer1);
 

@@ -22,6 +22,7 @@ public:
 	void IncreaseFireRate();
 	void IncreaseFireSpread();
 	void CollectMissile(unsigned int count);
+	void SetMissileAmmo(unsigned int ammo);
 
 	// Getters
 	unsigned int GetMissileAmmo() const;

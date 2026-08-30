@@ -88,6 +88,11 @@ void WeaponSystem::CollectMissile(unsigned int count)
 	m_missile_ammo += count;
 }
 
+void WeaponSystem::SetMissileAmmo(unsigned int ammo)
+{
+	m_missile_ammo = ammo;
+}
+
 unsigned int WeaponSystem::GetMissileAmmo() const
 {
 	return m_missile_ammo;

@@ -107,8 +107,13 @@ struct AircraftDecelerator
     }
 };
 
-Player::Player()
+Player::Player(sf::TcpSocket* socket, uint8_t identifier, const KeyBinding* binding)
+    : m_socket(socket)
+    , m_identifier(identifier)
+    , m_key_binding(binding)
 {
+    //TODO - Rewrite so its univeral 
+    /*
     // Player 1 Key Bindings (WASD + Space/M)
     m_key_binding_p1[sf::Keyboard::Scancode::A] = Action::kMoveLeft;
     m_key_binding_p1[sf::Keyboard::Scancode::D] = Action::kMoveRight;
@@ -122,9 +127,16 @@ Player::Player()
     m_key_binding_p2[sf::Keyboard::Scancode::Up] = Action::kMoveUp;
     m_key_binding_p2[sf::Keyboard::Scancode::Numpad0] = Action::kBulletFire;
     m_key_binding_p2[sf::Keyboard::Scancode::NumpadDecimal] = Action::kMissileFire;
-
+    */
     InitialiseActions();
 
+    for (auto& pair : m_action_binding)
+    {
+        pair.second.category = static_cast<unsigned int>(ReceiverCategories::kPlayerAircraft);
+    }
+
+	//TODO - Rewrite so it fits the class 
+    /* 
     // Don't set category here - it will be set based on player_id when commands are created
     m_was_forward_pressed_p1 = false;
     m_was_forward_pressed_p2 = false;
@@ -132,6 +144,7 @@ Player::Player()
     // Initialize kill counts
     m_player1_kills = 0;
     m_player2_kills = 0;
+    */
 }
 
 void Player::HandleEvent(const sf::Event& event, CommandQueue& command_queue, PlayerID player_id)
@@ -317,7 +330,7 @@ void Player::DisableAllRealtimeActions(bool enable)
 {
     for (auto& action : m_action_proxies)
     {
-        sf::Packet packet;
+        sf::Packet packet{}; // Value-initialized
         packet << static_cast<uint8_t>(Client::PacketType::kPlayerRealtimeChange);
         packet << m_identifier;
         packet << static_cast<uint8_t>(action.first);

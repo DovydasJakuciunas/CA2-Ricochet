@@ -290,7 +290,7 @@ bool MultiplayerGameState::HandleEvent(const sf::Event& event)
 		//If escape is pressed, show the pause screen
 		else if (key_pressed->scancode == sf::Keyboard::Scancode::Escape)
 		{
-			DisableAllRealtimeActions();
+			DisableAllRealtimeActions(false);
 			RequestStackPush(StateID::kNetworkPause);
 		}
 	}
@@ -321,12 +321,12 @@ void MultiplayerGameState::OnDestroy()
 	}
 }
 
-void MultiplayerGameState::DisableAllRealtimeActions()
+void MultiplayerGameState::DisableAllRealtimeActions(bool enable)
 {
-	m_active_state = false;
+	m_active_state = enable;
 	for (uint8_t identifier : m_local_player_identifiers)
 	{
-		m_players[identifier]->DisableAllRealtimeActions();
+		m_players[identifier]->DisableAllRealtimeActions(enable);
 	}
 }
 
@@ -416,9 +416,6 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 		float world_height, current_scroll;
 		packet >> world_height >> current_scroll;
 
-		m_world.SetWorldHeight(world_height);
-		m_world.SetCurrentBattleFieldPosition(current_scroll);
-
 		packet >> aircraft_count;
 		for (uint8_t i = 0; i < aircraft_count; ++i)
 		{
@@ -431,7 +428,7 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 			Aircraft* aircraft = m_world.AddAircraft(aircraft_identifier);
 			aircraft->setPosition(aircraft_position);
 			aircraft->SetHitpoints(hitpoints);
-			aircraft->SetMissileAmmo(missile_ammo);
+			aircraft->GetWeaponSystem().SetMissileAmmo(missile_ammo);
 
 			m_players[aircraft_identifier].reset(new Player(&m_socket, aircraft_identifier, nullptr));
 		}
