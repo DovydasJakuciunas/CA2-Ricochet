@@ -194,7 +194,7 @@ void GameServer::Tick()
 
 sf::Time GameServer::Now() const
 {
-    return sf::Time();
+    return m_clock.getElapsedTime();
 }
 
 void GameServer::HandleIncomingPackets()

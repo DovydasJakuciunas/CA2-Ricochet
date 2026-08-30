@@ -289,3 +289,47 @@ void World::SpawnRandomPickups()
 	}
 }
 
+// Multiplayer aircraft management methods
+Aircraft* World::GetAircraft(uint8_t aircraft_id)
+{
+	auto it = m_networked_aircraft.find(aircraft_id);
+	if (it != m_networked_aircraft.end())
+	{
+		return it->second;
+	}
+	return nullptr;
+}
+
+Aircraft* World::AddAircraft(uint8_t aircraft_id, PlayerID player_id)
+{
+	// Create a new aircraft with default type (Eagle) and the specified player ID
+	std::unique_ptr<Aircraft> aircraft(new Aircraft(AircraftType::kEagle, m_textures, m_fonts, player_id));
+	Aircraft* aircraft_ptr = aircraft.get();
+
+	// Store in the map
+	m_networked_aircraft[aircraft_id] = aircraft_ptr;
+
+	// Add to scene graph
+	m_scene_layers[static_cast<int>(SceneLayers::kUpperAir)]->AttachChild(std::move(aircraft));
+
+	return aircraft_ptr;
+}
+
+void World::RemoveAircraft(uint8_t aircraft_id)
+{
+	auto it = m_networked_aircraft.find(aircraft_id);
+	if (it != m_networked_aircraft.end())
+	{
+		// Mark the aircraft for removal
+		if (it->second)
+		{
+			it->second->Destroy();
+		}
+		m_networked_aircraft.erase(it);
+	}
+}
+
+bool World::PollGameAction(GameActions::Action& out)
+{
+	return m_network_node->PollGameAction(out);
+}

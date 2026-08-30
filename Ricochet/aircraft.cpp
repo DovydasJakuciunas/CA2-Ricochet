@@ -128,25 +128,9 @@ void Aircraft::DrawCurrent(sf::RenderTarget& target, sf::RenderStates states) co
 	else
 	{
 		// Apply color tint based on player ID
-		if (m_player_id == PlayerID::kPlayer1)
-		{
-			// Player 1: Blue tint
-			sf::Sprite blueSpriteVersion = m_sprite;
-			blueSpriteVersion.setColor(kPlayer1Color);
-			target.draw(blueSpriteVersion, states);
-		}
-		else if (m_player_id == PlayerID::kPlayer2)
-		{
-			// Player 2: Red tint
-			sf::Sprite redSpriteVersion = m_sprite;
-			redSpriteVersion.setColor(kPlayer2Color);
-			target.draw(redSpriteVersion, states);
-		}
-		else
-		{
-			// Default: white (no tint)
-			target.draw(m_sprite, states);
-		}
+		sf::Sprite coloredSprite = m_sprite;
+		coloredSprite.setColor(PlayerColors::GetColor(static_cast<unsigned int>(m_player_id)));
+		target.draw(coloredSprite, states);
 	}
 }
 

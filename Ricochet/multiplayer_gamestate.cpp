@@ -2,6 +2,7 @@
 #include "music_player.hpp"
 #include "utility.hpp"
 #include "fontID.hpp"
+#include "weapon_system.hpp"
 
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/Network/Packet.hpp>
@@ -190,7 +191,7 @@ bool MultiplayerGameState::Update(sf::Time dt)
 		CommandQueue& commands = m_world.GetCommandQueue();
 		for (auto& pair : m_players)
 		{
-			pair.second->HandleRealtimeNetworkInput(commands);
+			pair.second->HandleRealTimeInput(commands, static_cast<PlayerID>(pair.first));
 		}
 
 		//Handle messages from the server that may have arrived
@@ -217,7 +218,7 @@ bool MultiplayerGameState::Update(sf::Time dt)
 
 		UpdateBroadcastMessage(dt);
 
-		//Time counter fro blinking second player text
+		//Time counter for blinking second player text
 		m_player_invitation_time += dt;
 		if (m_player_invitation_time > sf::seconds(1.f))
 		{
@@ -226,7 +227,7 @@ bool MultiplayerGameState::Update(sf::Time dt)
 
 		//Events occurring in the game
 		GameActions::Action game_action;
-		while (m_world.PollGameAction(game_action))
+		while (m_world.PollGameAction(game_action))	//Removes next action from the queue and returns true if there was an action
 		{
 			sf::Packet packet;
 			packet << static_cast<uint8_t>(Client::PacketType::kGameEvent);
@@ -248,7 +249,7 @@ bool MultiplayerGameState::Update(sf::Time dt)
 			{
 				if (Aircraft* aircraft = m_world.GetAircraft(identifier))
 				{
-					position_update_packet << identifier << aircraft->getPosition().x << aircraft->getPosition().y << static_cast<uint8_t>(aircraft->GetHitPoints()) << static_cast<uint8_t>(aircraft->GetMissileAmmo());
+					position_update_packet << identifier << aircraft->getPosition().x << aircraft->getPosition().y << static_cast<uint8_t>(aircraft->GetHitPoints()) << static_cast<uint8_t>(aircraft->GetWeaponSystem().GetMissileAmmo());
 				}
 			}
 			m_socket.send(position_update_packet);
