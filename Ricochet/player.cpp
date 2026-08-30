@@ -112,6 +112,7 @@ Player::Player(sf::TcpSocket* socket, uint8_t identifier, const KeyBinding* bind
     : m_socket(socket)
     , m_identifier(identifier)
     , m_key_binding(binding)
+    , m_gameplay_manager(nullptr)
 {
     //TODO - Rewrite so its univeral 
     /*
@@ -266,14 +267,26 @@ MissionStatus Player::GetMissionStatus(PlayerID player_id) const
     return (player_id == PlayerID::kPlayer1) ? m_current_mission_status_p1 : m_current_mission_status_p2;
 }
 
-int Player::GetPlayerKills(uint8_t playerID, GameplayManager& gameplayMgr) const
+void Player::SetGameplayManager(GameplayManager* gameplayMgr)
 {
-    return gameplayMgr.GetPlayerKills(playerID);
+    m_gameplay_manager = gameplayMgr;
 }
 
-const std::map<uint8_t, int>& Player::GetAllPlayerKills(GameplayManager& gameplayMgr) const
+int Player::GetPlayerKills(uint8_t playerID) const
 {
-    return gameplayMgr.GetAllPlayerKills();
+    if (m_gameplay_manager)
+        return m_gameplay_manager->GetPlayerKills(playerID);
+    return 0;
+}
+
+const std::map<uint8_t, int>& Player::GetAllPlayerKills() const
+{
+    if (m_gameplay_manager)
+        return m_gameplay_manager->GetAllPlayerKills();
+
+    // Return empty map as fallback (this shouldn't happen in normal gameplay)
+    static const std::map<uint8_t, int> empty_map;
+    return empty_map;
 }
 
 void Player::InitialiseActions()

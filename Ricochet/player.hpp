@@ -29,8 +29,9 @@ public:
 	MissionStatus GetMissionStatus(PlayerID player_id = PlayerID::kPlayer1) const;
 
 	// PvP score tracking - Gets from GameplayManager
-	int GetPlayerKills(uint8_t playerID, GameplayManager& gameplayMgr) const;
-	const std::map<uint8_t, int>& GetAllPlayerKills(GameplayManager& gameplayMgr) const;
+	void SetGameplayManager(GameplayManager* gameplayMgr);
+	int GetPlayerKills(uint8_t playerID) const;
+	const std::map<uint8_t, int>& GetAllPlayerKills() const;
 
 	//Multiplayer Additions
 	void DisableAllRealtimeActions(bool enable);
@@ -49,6 +50,9 @@ private:
 	MissionStatus m_current_mission_status_p2;
 	bool m_was_forward_pressed_p1;
 	bool m_was_forward_pressed_p2;
+
+	// Reference to GameplayManager for kill tracking
+	GameplayManager* m_gameplay_manager;
 
 	//Multiplayer Additions
 private:

@@ -6,36 +6,53 @@
 GameOverState::GameOverState(StateStack& stack, Context context)
     : State(stack, context)
     , m_game_over_text(context.fonts->Get(FontID::kMain))
-    , m_score_text(context.fonts->Get(FontID::kMain))
     , m_elapsed_time(sf::Time::Zero)
-    , m_is_pvp_win(true)
-    , m_player1_kills(0)
-    , m_player2_kills(0)
+    , m_winner_id(0)
 {
     sf::Vector2f window_size(context.window->getSize());
 
-    if (context.player->GetMissionStatus() == MissionStatus::kMissionSuccess)
+    // Get all player kills from Player
+    m_all_player_kills = context.player->GetAllPlayerKills();
+
+    // Find the winner (player with most kills)
+    int max_kills = -1;
+    for (const auto& [playerID, kills] : m_all_player_kills)
     {
-        m_game_over_text.setString("PLAYER 1 HAS WON");
-    }
-    else
-    {
-        m_game_over_text.setString("PLAYER 2 HAS WON");
+        if (kills > max_kills)
+        {
+            max_kills = kills;
+            m_winner_id = playerID;
+        }
     }
 
+    // Set winner text
+    m_game_over_text.setString("PLAYER " + std::to_string(m_winner_id + 1) + " HAS WON!");
     m_game_over_text.setCharacterSize(70);
     Utility::CentreOrigin(m_game_over_text);
-    m_game_over_text.setPosition(sf::Vector2f(0.5 * window_size.x, 0.4 * window_size.y));
+    m_game_over_text.setPosition(sf::Vector2f(0.5 * window_size.x, 0.15 * window_size.y));
 
-    // Initialize score text from Player context
-    m_player1_kills = context.player->GetPlayer1Kills();
-    m_player2_kills = context.player->GetPlayer2Kills();
+    // Create scoreboard texts for all players
+    float left_margin = 20.f;
+    float top_margin = 100.f;
+    float line_height = 40.f;
+    int line_count = 0;
 
-    m_score_text.setCharacterSize(50);
-    m_score_text.setFillColor(sf::Color::White);
-    m_score_text.setString(std::to_string(m_player1_kills) + " - " + std::to_string(m_player2_kills));
-    Utility::CentreOrigin(m_score_text);
-    m_score_text.setPosition(sf::Vector2f(0.5 * window_size.x, 0.55 * window_size.y));
+    for (const auto& [playerID, kills] : m_all_player_kills)
+    {
+        sf::Text player_score(context.fonts->Get(FontID::kMain));
+        player_score.setString("Player " + std::to_string(playerID + 1) + ": " + std::to_string(kills));
+        player_score.setCharacterSize(30);
+
+        // Color the text to match the player color
+        sf::Color player_color = PlayerColors::GetColor(playerID);
+        player_score.setFillColor(player_color);
+
+        // Position vertically on the left side
+        player_score.setPosition(sf::Vector2f(left_margin, top_margin + (line_count * line_height)));
+
+        m_player_score_texts.push_back(player_score);
+        line_count++;
+    }
 }
 
 void GameOverState::Draw()
@@ -50,7 +67,10 @@ void GameOverState::Draw()
 
     window.draw(background_shape);
     window.draw(m_game_over_text);
-    window.draw(m_score_text);
+    for (const auto& player_score : m_player_score_texts)
+    {
+        window.draw(player_score);
+    }
 }
 
 bool GameOverState::Update(sf::Time dt)
