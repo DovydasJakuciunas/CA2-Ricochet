@@ -8,6 +8,9 @@
 #include "constants.hpp"
 #include "utility.hpp"
 #include <cmath>
+#include <SFML/Network/TcpSocket.hpp>
+#include "key_binding.hpp"
+
 
 class Player
 {
@@ -27,6 +30,8 @@ public:
 	int GetPlayer1Kills() const;
 	int GetPlayer2Kills() const;
 
+	void DisableAllRealtimeActions(bool enable);
+
 private:
 	void InitialiseActions();
 	static bool IsRealTimeAction(Action action);
@@ -43,5 +48,13 @@ private:
 	// PvP score tracking
 	int m_player1_kills;
 	int m_player2_kills;
+
+	//Multiplayer Additions
+private:
+	const KeyBinding* m_key_binding;
+	std::map<Action, Command> m_action_binding;
+	std::map<Action, bool> m_action_proxies;
+	uint8_t m_identifier;
+	sf::TcpSocket* m_socket;
 };
 

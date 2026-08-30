@@ -313,3 +313,15 @@ bool Player::IsRealTimeAction(Action action)
         return false;
     }
 }
+void Player::DisableAllRealtimeActions(bool enable)
+{
+    for (auto& action : m_action_proxies)
+    {
+        sf::Packet packet;
+        packet << static_cast<uint8_t>(Client::PacketType::kPlayerRealtimeChange);
+        packet << m_identifier;
+        packet << static_cast<uint8_t>(action.first);
+        packet << enable;
+        m_socket->send(packet);
+    }
+}

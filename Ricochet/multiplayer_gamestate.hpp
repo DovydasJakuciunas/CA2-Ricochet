@@ -14,10 +14,10 @@ public:
 	virtual bool HandleEvent(const sf::Event& event);
 	virtual void OnActivate();
 	void OnDestroy();
-	void DisableAllRealtimeActions();
+	void DisableAllRealtimeActions(bool enable);
 
 private:
-	void UpdateBroadcastMessage(sf::Time elpased_time);
+	void UpdateBroadcastMessage(sf::Time elapsed_time);
 	void HandlePacket(uint8_t packet_type, sf::Packet& packet);
 
 private:
