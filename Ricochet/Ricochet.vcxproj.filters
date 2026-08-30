@@ -207,6 +207,18 @@
     <ClInclude Include="network_protocol.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="game_server.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="network_node.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="multiplayer_gamestate.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="key_binding.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -341,10 +353,25 @@
     <ClCompile Include="physics_simulator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="game_server.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="network_node.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="multiplayer_gamestate.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="key_binding.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="resource_holder.inl">
       <Filter>Source Files</Filter>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="ip.txt" />
   </ItemGroup>
 </Project>
