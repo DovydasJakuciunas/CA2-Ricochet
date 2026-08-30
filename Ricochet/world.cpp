@@ -283,6 +283,7 @@ void World::SpawnRandomPickups()
 		std::unique_ptr<Pickup> pickup(new Pickup(type, m_textures));
 		pickup->setPosition(sf::Vector2f(random_x, random_y));
 		pickup->SetVelocity(0.f, 0.f);
+		
 
 		m_scene_layers[static_cast<int>(SceneLayers::kUpperAir)]->AttachChild(std::move(pickup));
 	}
