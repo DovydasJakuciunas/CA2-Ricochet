@@ -370,6 +370,8 @@ void GameServer::HandleIncomingConnections()
 
     if (m_listener_socket.accept(m_peers[m_connected_players]->m_socket) == sf::TcpListener::Status::Done)
     {
+        std::cout << "[GAMESERVER] Player attempting to join! Total connected: " << static_cast<int>(m_connected_players + 1) << std::endl;
+
         //Order the new client to spawn its player 1
         m_aircraft_info[m_aircraft_identifier_counter].m_position = sf::Vector2f(m_battlefield_rect.size.x / 2, m_battlefield_rect.position.y + m_battlefield_rect.size.y / 2);
         m_aircraft_info[m_aircraft_identifier_counter].m_hitpoints = 100;
