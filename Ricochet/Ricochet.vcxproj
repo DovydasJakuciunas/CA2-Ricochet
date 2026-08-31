@@ -178,6 +178,7 @@
     <ClInclude Include="music_player.hpp" />
     <ClInclude Include="music_themes.hpp" />
     <ClInclude Include="network_node.hpp" />
+    <ClInclude Include="network_pause_state.hpp" />
     <ClInclude Include="network_protocol.hpp" />
     <ClInclude Include="particle.hpp" />
     <ClInclude Include="particletype.hpp" />
@@ -239,6 +240,7 @@
     <ClCompile Include="multiplayer_gamestage.cpp" />
     <ClCompile Include="music_player.cpp" />
     <ClCompile Include="network_node.cpp" />
+    <ClCompile Include="network_pause_state.cpp" />
     <ClCompile Include="particle.cpp" />
     <ClCompile Include="particle_node.cpp" />
     <ClCompile Include="pause_state.cpp" />

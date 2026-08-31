@@ -219,6 +219,9 @@
     <ClInclude Include="key_binding.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="network_pause_state.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -363,6 +366,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="multiplayer_gamestage.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="network_pause_state.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
