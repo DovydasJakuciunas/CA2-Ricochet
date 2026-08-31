@@ -25,7 +25,7 @@ private:
 		sf::Time m_last_packet_time;
 		std::vector<uint8_t> m_aircraft_identifiers;
 		bool m_ready;
-		bool m_time_out;
+		bool m_timed_out;
 	};
 
 	struct AircraftInfo
@@ -65,7 +65,6 @@ private:
 	std::size_t m_max_connected_players;
 	std::size_t m_connected_players;
 
-	float m_world_height;
 	sf::FloatRect m_battlefield_rect;
 
 	std::size_t m_aircraft_count;

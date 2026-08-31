@@ -13,6 +13,10 @@ public:
 	explicit StateStack(State::Context context);
 	template<typename T>
 	void RegisterState(StateID state_id);
+
+	template<typename T, typename Param1>
+	void RegisterState(StateID state_id, Param1 arg1);
+
 	void Update(sf::Time dt);
 	void Draw();
 	void HandleEvent(const sf::Event& event);
@@ -37,7 +41,6 @@ private:
 	};
 
 private:
-	//TODO is vector the right data structure here - list?
 	std::vector<State::Ptr> m_stack;
 	std::vector<PendingChange> m_pending_list;
 	State::Context m_context;
@@ -57,6 +60,23 @@ void StateStack::RegisterState(StateID state_id)
 	m_state_factory[state_id] = [this]()
 	{
 		auto state = std::make_shared<T>(*this, m_context);
+
+		// Call Initialize if T supports it (for enable_shared_from_this)
+		if constexpr (has_initialize<T>::value)
+		{
+			state->Initialize();
+		}
+
+		return state;
+	};
+}
+
+template<typename T, typename Param1>
+void StateStack::RegisterState(StateID state_id, Param1 arg1)
+{
+	m_state_factory[state_id] = [this, arg1]()
+	{
+		auto state = std::make_shared<T>(*this, m_context, arg1);
 
 		// Call Initialize if T supports it (for enable_shared_from_this)
 		if constexpr (has_initialize<T>::value)

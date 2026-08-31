@@ -32,6 +32,7 @@ public:
 	Aircraft* GetAircraft(uint8_t aircraft_id);
 	Aircraft* AddAircraft(uint8_t aircraft_id, PlayerID player_id = PlayerID::kPlayer1);
 	void RemoveAircraft(uint8_t aircraft_id);
+	void SetupNetworkNode();
 
 	bool PollGameAction(GameActions::Action& out);
 

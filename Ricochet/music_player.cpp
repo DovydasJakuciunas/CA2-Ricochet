@@ -16,15 +16,12 @@ void MusicPlayer::Play(MusicThemes theme)
 
 	m_music.setVolume(m_volume);
 	m_music.setLooping(true);
-	std::cout << "Playing " << filename << m_volume << std::endl;
 	m_music.setRelativeToListener(false);
 	m_music.play();
 	sf::SoundSource::Status status = m_music.getStatus();
 	if (status != sf::SoundSource::Status::Playing) {
-		std::cout << "DEBUG: Music failed to start! Status: " << std::endl;
 	}
 	else {
-		std::cout << "DEBUG: Music is technically playing at volume: " << m_music.getVolume() << std::endl;
 	}
 }
 
@@ -47,5 +44,4 @@ void MusicPlayer::SetPaused(bool paused)
 }
 
 MusicPlayer::~MusicPlayer() {
-	std::cout << "CRITICAL: MusicPlayer is being DESTROYED!" << std::endl;
 }

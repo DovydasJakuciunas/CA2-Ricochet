@@ -1,4 +1,5 @@
 #include "Statestack.hpp"
+#include <iostream>
 
 StateStack::PendingChange::PendingChange(StackActions action, StateID state_id) : action(action), state_id(state_id)
 {
@@ -68,7 +69,6 @@ void StateStack::ApplyPendingChanges()
 		case StackActions::kPop:
 			m_stack.pop_back();
 			break;
-			//TODO should we clear the pending list when queueing up clear
 		case StackActions::kClear:
 			m_stack.clear();
 			break;
@@ -91,5 +91,6 @@ State::Ptr StateStack::CreateState(StateID state_id)
 {
 	auto found = m_state_factory.find(state_id);
 	assert(found != m_state_factory.end());
-	return found->second();
+	auto state = found->second();
+	return state;
 }

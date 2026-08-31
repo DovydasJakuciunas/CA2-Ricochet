@@ -1,6 +1,8 @@
 #include "multiplayer_gamestate.hpp"
 #include "music_player.hpp"
 #include "utility.hpp"
+#include "fontID.hpp"
+#include "weapon_system.hpp"
 
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/Network/Packet.hpp>
@@ -34,7 +36,7 @@ sf::IpAddress GetAddressFromFile()
 
 MultiplayerGameState::MultiplayerGameState(StateStack& stack, Context context, bool is_host)
 	:State(stack, context)
-	, m_world(*context.window, *context.fonts, *context.sound, true)
+	, m_world(*context.window, *context.fonts, *context.sound)
 	, m_window(*context.window)
 	, m_texture_holder(*context.textures)
 	, m_connected(false)
@@ -43,7 +45,7 @@ MultiplayerGameState::MultiplayerGameState(StateStack& stack, Context context, b
 	, m_has_focus(true)
 	, m_host(is_host)
 	, m_game_started(false)
-	, m_client_timeout(sf::seconds(1.f))
+	, m_client_timeout(sf::seconds(5.f))
 	, m_time_since_last_packet(sf::seconds(0.f))
 	, m_broadcast_text(context.fonts->Get(FontID::kMain))
 	, m_player_invitation_text(context.fonts->Get(FontID::kMain))
@@ -75,7 +77,9 @@ MultiplayerGameState::MultiplayerGameState(StateStack& stack, Context context, b
 
 	if (m_host)
 	{
+		std::cout << "Host creating a server" << std::endl;
 		m_game_server.reset(new GameServer(sf::Vector2f(m_window.getSize())));
+		std::cout << "Server created" << std::endl;
 		ip = sf::IpAddress::LocalHost;
 	}
 	else
@@ -90,6 +94,8 @@ MultiplayerGameState::MultiplayerGameState(StateStack& stack, Context context, b
 		if (status == sf::Socket::Status::Done)
 		{
 			m_connected = true;
+			// Set non-blocking ONLY after a successful connection
+			m_socket.setBlocking(false);
 		}
 		else
 		{
@@ -105,10 +111,7 @@ MultiplayerGameState::MultiplayerGameState(StateStack& stack, Context context, b
 	m_socket.setBlocking(false);
 
 	//Play the game music
-	std::cout << "DEBUG [MultiplayerGameState::Constructor] - Calling music->Play(kMissionTheme)..." << std::endl;
 	context.music->Play(MusicThemes::kMissionTheme);
-	std::cout << "DEBUG [MultiplayerGameState::Constructor] - Multiplayer game music playback initiated" << std::endl;
-
 }
 
 void MultiplayerGameState::Draw()
@@ -141,11 +144,7 @@ bool MultiplayerGameState::Update(sf::Time dt)
 	//Connected to the Server: Handle all the network logic
 	if (m_connected)
 	{
-		if (!m_active_state)
-			DisableAllRealtimeActions(true);
-
 		m_world.Update(dt);
-
 
 		//Remove players whose aircraft were destroyed
 		bool found_local_plane = false;
@@ -192,7 +191,7 @@ bool MultiplayerGameState::Update(sf::Time dt)
 		CommandQueue& commands = m_world.GetCommandQueue();
 		for (auto& pair : m_players)
 		{
-			pair.second->HandleRealtimeNetworkInput(commands);
+			pair.second->HandleRealTimeInput(commands, static_cast<PlayerID>(pair.first));
 		}
 
 		//Handle messages from the server that may have arrived
@@ -228,7 +227,7 @@ bool MultiplayerGameState::Update(sf::Time dt)
 
 		//Events occurring in the game
 		GameActions::Action game_action;
-		while (m_world.PollGameAction(game_action))
+		while (m_world.PollGameAction(game_action))	//Removes next action from the queue and returns true if there was an action
 		{
 			sf::Packet packet;
 			packet << static_cast<uint8_t>(Client::PacketType::kGameEvent);
@@ -250,7 +249,7 @@ bool MultiplayerGameState::Update(sf::Time dt)
 			{
 				if (Aircraft* aircraft = m_world.GetAircraft(identifier))
 				{
-					position_update_packet << identifier << aircraft->getPosition().x << aircraft->getPosition().y << static_cast<uint8_t>(aircraft->GetHitPoints()) << static_cast<uint8_t>(aircraft->GetMissileAmmo());
+					position_update_packet << identifier << aircraft->getPosition().x << aircraft->getPosition().y << static_cast<uint8_t>(aircraft->GetHitPoints()) << static_cast<uint8_t>(aircraft->GetWeaponSystem().GetMissileAmmo());
 				}
 			}
 			m_socket.send(position_update_packet);
@@ -291,7 +290,7 @@ bool MultiplayerGameState::HandleEvent(const sf::Event& event)
 		//If escape is pressed, show the pause screen
 		else if (key_pressed->scancode == sf::Keyboard::Scancode::Escape)
 		{
-			DisableAllRealtimeActions(false);
+			DisableAllRealtimeActions();
 			RequestStackPush(StateID::kNetworkPause);
 		}
 	}
@@ -322,12 +321,12 @@ void MultiplayerGameState::OnDestroy()
 	}
 }
 
-void MultiplayerGameState::DisableAllRealtimeActions(bool enable)
+void MultiplayerGameState::DisableAllRealtimeActions()
 {
-	m_active_state = enable;
+	m_active_state = false;
 	for (uint8_t identifier : m_local_player_identifiers)
 	{
-		m_players[identifier]->DisableAllRealtimeActions(enable);
+		m_players[identifier]->DisableAllRealtimeActions();
 	}
 }
 
@@ -382,7 +381,6 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 		uint8_t aircraft_identifier;
 		sf::Vector2f aircraft_position;
 		packet >> aircraft_identifier >> aircraft_position.x >> aircraft_position.y;
-		std::cout << "Client kSpawnSelf" << +aircraft_identifier << std::endl;
 		Aircraft* aircraft = m_world.AddAircraft(aircraft_identifier);
 		aircraft->setPosition(aircraft_position);
 		m_players[aircraft_identifier].reset(new Player(&m_socket, aircraft_identifier, GetContext().keys1));
@@ -457,11 +455,10 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 		uint8_t aircraft_identifier;
 		uint8_t action;
 		packet >> aircraft_identifier >> action;
-		std::cout << "Player Event" << aircraft_identifier << std::endl;
+
 		auto itr = m_players.find(aircraft_identifier);
 		if (itr != m_players.end())
 		{
-			std::cout << "Handling Network Event" << std::endl;
 			itr->second->HandleNetworkEvent(static_cast<Action>(action), m_world.GetCommandQueue());
 		}
 	}

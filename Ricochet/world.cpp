@@ -161,10 +161,20 @@ void World::BuildScene()
 	//Add sound effect node
 	std::unique_ptr<SoundNode> soundNode(new SoundNode(m_sounds));
 	m_scene_graph.AttachChild(std::move(soundNode));
-	m_physics_simulator = std::make_unique<PhysicsSimulator>(m_world_bounds, m_camera);
-}
+			m_physics_simulator = std::make_unique<PhysicsSimulator>(m_world_bounds, m_camera);
+	}
 
-void World::UpdateSounds()
+	void World::SetupNetworkNode()
+	{
+		if (!m_network_node)
+		{
+			std::unique_ptr<NetworkNode> network_node(new NetworkNode());
+			m_network_node = network_node.get();
+			m_scene_graph.AttachChild(std::move(network_node));
+		}
+	}
+
+	void World::UpdateSounds()
 {
 	sf::Vector2f listener_position;
 

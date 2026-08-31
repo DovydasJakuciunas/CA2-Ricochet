@@ -356,13 +356,13 @@
     <ClCompile Include="network_node.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="multiplayer_gamestate.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="key_binding.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="gameplay_manager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="multiplayer_gamestage.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
