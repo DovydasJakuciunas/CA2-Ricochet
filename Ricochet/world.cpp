@@ -1,11 +1,6 @@
 #include "world.hpp"
 #include "sprite_node.hpp"
-#include <iostream>
-#include <random>
 #include <vector>
-#include "state.hpp"
-#include <SFML/System/Angle.hpp>
-#include "Projectile.hpp"
 #include "pickup.hpp"
 #include "particle_node.hpp"
 #include "particletype.hpp"
