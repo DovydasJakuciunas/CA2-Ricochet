@@ -111,7 +111,7 @@ struct AircraftDecelerator
 Player::Player()
     : m_socket(nullptr)
     , m_identifier(0)
-    , m_key_binding_network(nullptr)
+    , m_key_binding(nullptr)
     , m_gameplay_manager(nullptr)
     , m_current_mission_status(MissionStatus::kMissionRunning)
     , m_was_forward_pressed(false)
@@ -122,7 +122,7 @@ Player::Player()
 Player::Player(sf::TcpSocket* socket, uint8_t identifier, const KeyBinding* binding)
 	: m_socket(socket)
 	, m_identifier(identifier)
-	, m_key_binding_network(binding)
+	, m_key_binding(binding)
 	, m_gameplay_manager(nullptr)
 {
 
@@ -137,12 +137,12 @@ Player::Player(sf::TcpSocket* socket, uint8_t identifier, const KeyBinding* bind
 void Player::HandleEvent(const sf::Event& event, CommandQueue& command_queue)
 {
     const auto* key_pressed = event.getIf<sf::Event::KeyPressed>();
-    if (key_pressed)
+    if (key_pressed && m_key_binding)
     {
-        auto found = m_key_binding.find(key_pressed->scancode);
-        if (found != m_key_binding.end() && !IsRealTimeAction(found->second))
+        Action action;
+        if (m_key_binding->CheckAction(key_pressed->scancode, action) && !IsRealTimeAction(action))
         {
-            Command cmd = m_action_binding[found->second];
+            Command cmd = m_action_binding[action];
             cmd.category = static_cast<unsigned int>(ReceiverCategories::kPlayerAircraft);
             command_queue.Push(cmd);
         }
@@ -151,37 +151,24 @@ void Player::HandleEvent(const sf::Event& event, CommandQueue& command_queue)
 
 bool Player::IsLocal() const
 {
-    // No key binding means this player is remote
-    return m_key_binding_network != nullptr;
+    // IsLocal if we have a key binding (non-network player or local in network game)
+    return m_key_binding != nullptr;
+}
+
+void Player::SetKeyBinding(const KeyBinding* binding)
+{
+    m_key_binding = binding;
 }
 
 
 void Player::HandleRealTimeInput(CommandQueue& command_queue)
 {
-    // Check if this is a networked game and local player or just a single player game
-    if ((m_socket && IsLocal()) || !m_socket)
+    // Use shared key binding for both single-player and multiplayer
+    if (m_key_binding && IsLocal())
     {
-        // For networked games with local player, use network key binding
-        // For single player games, use local key binding
-        if (m_socket && IsLocal())
-        {
-            std::vector<Action> activeActions = m_key_binding_network->GetRealtimeActions();
-            for (Action action : activeActions)
-                command_queue.Push(m_action_binding[action]);
-        }
-        else if (!m_socket)
-        {
-            // Single player mode - use local key binding
-            for (auto& pair : m_key_binding)
-            {
-                if (sf::Keyboard::isKeyPressed(pair.first) && IsRealTimeAction(pair.second))
-                {
-                    Command cmd = m_action_binding[pair.second];
-                    cmd.category = static_cast<unsigned int>(ReceiverCategories::kPlayerAircraft);
-                    command_queue.Push(cmd);
-                }
-            }
-        }
+        std::vector<Action> activeActions = m_key_binding->GetRealtimeActions();
+        for (Action action : activeActions)
+            command_queue.Push(m_action_binding[action]);
     }
 }
 
@@ -200,28 +187,19 @@ void Player::HandleRealtimeNetworkInput(CommandQueue& commands)
 
 void Player::AssignKey(Action action, sf::Keyboard::Scancode key)
 {
-    for (auto itr = m_key_binding.begin(); itr != m_key_binding.end();)
+    if (m_key_binding)
     {
-        if (itr->second == action)
-        {
-            m_key_binding.erase(itr++);
-        }
-        else
-        {
-            ++itr;
-        }
+        const_cast<KeyBinding*>(m_key_binding)->AssignKey(action, key);
+        // Save the updated key bindings to file
+        const_cast<KeyBinding*>(m_key_binding)->SaveToFile("keybindings.cfg");
     }
-    m_key_binding[key] = action;
 }
 
 sf::Keyboard::Scancode Player::GetAssignedKey(Action action) const
 {
-    for (auto pair : m_key_binding)
+    if (m_key_binding)
     {
-        if (pair.second == action)
-        {
-            return pair.first;
-        }
+        return m_key_binding->GetAssignedKey(action);
     }
     return sf::Keyboard::Scancode::Unknown;
 }

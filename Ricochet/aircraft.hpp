@@ -12,6 +12,7 @@
 
 class WeaponSystem;
 class MovementController;
+class KeyBinding;
 
 class Aircraft : public Entity
 {
@@ -49,6 +50,9 @@ public:
 	MovementController& GetMovementController();
 	const MovementController& GetMovementController() const;
 
+	// Set key binding for animation updates
+	void SetKeyBinding(const KeyBinding* binding);
+
 private:
 	virtual void DrawCurrent(sf::RenderTarget& target, sf::RenderStates states) const;
 	virtual void UpdateCurrent(sf::Time dt, CommandQueue& commands) override;
@@ -80,6 +84,9 @@ private:
 	// Subsystems
 	std::unique_ptr<WeaponSystem> m_weapon_system;
 	std::unique_ptr<MovementController> m_movement_controller;
+
+	// Key binding for animation
+	const KeyBinding* m_key_binding;
 
 };
 

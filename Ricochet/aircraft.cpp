@@ -1,10 +1,12 @@
 #include "aircraft.hpp"
 #include "weapon_system.hpp"
 #include "movement_controller.hpp"
+#include "key_binding.hpp"
 #include "texture_id.hpp"
 #include "data_tables.hpp"
 #include "constants.hpp"
 #include "utility.hpp"
+#include <iostream>
 
 namespace
 {
@@ -46,6 +48,7 @@ Aircraft::Aircraft(AircraftType type, const TextureHolder& textures, const FontH
 	, m_collision_immunity_remaining(sf::Time::Zero)
 	, m_weapon_system(std::make_unique<WeaponSystem>(this, textures))
 	, m_movement_controller(std::make_unique<MovementController>(this))
+	, m_key_binding(nullptr)
 {
 	m_explosion.SetFrameSize(sf::Vector2i(kExplosionFrameSize, kExplosionFrameSize));
 	m_explosion.SetNumFrames(kExplosionFrameCount);
@@ -172,22 +175,30 @@ void Aircraft::UpdateRollAnimation()
 	{
 		sf::IntRect textureRect = Table[static_cast<int>(m_type)].m_texture_rect;
 
-		// Check which directional keys are being pressed based on player ID
-		bool is_left_pressed, is_right_pressed;
+		bool is_left_pressed = false;
+		bool is_right_pressed = false;
 
-		if (m_player_id == PlayerID::kPlayer1)
+		// If we have a key binding, use the realtime actions
+		if (m_key_binding)
 		{
-			// Player 1: A and D keys
-			is_left_pressed = sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::A);
-			is_right_pressed = sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::D);
+			std::vector<Action> activeActions = m_key_binding->GetRealtimeActions();
+
+			for (Action action : activeActions)
+			{
+				if (action == Action::kMoveLeft)
+					is_left_pressed = true;
+				else if (action == Action::kMoveRight)
+					is_right_pressed = true;
+			}
 		}
 		else
 		{
-			is_left_pressed = false;
-			is_right_pressed = false;
+			// Fallback to hardcoded A/D keys if binding not available
+			is_left_pressed = sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::A);
+			is_right_pressed = sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::D);
 		}
 
-		// Roll animation based on key input
+		// Roll animation based on bound key input
 		if (is_left_pressed)
 		{
 			textureRect.position.x += textureRect.size.x;  // Roll left
@@ -264,4 +275,9 @@ MovementController& Aircraft::GetMovementController()
 const MovementController& Aircraft::GetMovementController() const
 {
 	return *m_movement_controller;
+}
+
+void Aircraft::SetKeyBinding(const KeyBinding* binding)
+{
+	m_key_binding = binding;
 }

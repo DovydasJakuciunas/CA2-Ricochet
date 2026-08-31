@@ -21,6 +21,9 @@ Application::Application() : m_window(sf::VideoMode({ 1024, 768 }), "States", sf
 	// Initialize KeyBindings
 	m_key_binding1 = std::make_unique<KeyBinding>(1);
 
+	// Load saved key bindings from file
+	m_key_binding1->LoadFromFile("keybindings.cfg");
+
 	// Set them in the context
 	m_stack.GetContext().keys1 = m_key_binding1.get();
 

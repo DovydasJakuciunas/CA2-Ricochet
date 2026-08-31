@@ -34,7 +34,7 @@ sf::IpAddress GetAddressFromFile()
 
 MultiplayerGameState::MultiplayerGameState(StateStack& stack, Context context, bool is_host)
 	:State(stack, context)
-	, m_world(*context.window, *context.fonts, *context.sound, true)
+	, m_world(*context.window, *context.fonts, *context.sound, context.keys1)
 	, m_window(*context.window)
 	, m_texture_holder(*context.textures)
 	, m_connected(false)

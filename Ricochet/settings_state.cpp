@@ -8,6 +8,9 @@ SettingsState::SettingsState(StateStack& stack, Context context)
 	, m_background_sprite(context.textures->Get(TextureID::kTitleScreen))
 	, m_current_binding_player(PlayerID::kPlayer1)
 {
+	// Ensure player has access to shared KeyBinding
+	context.player->SetKeyBinding(context.keys1);
+
 	// Player 1 Controls Header
 	auto p1_label = std::make_shared<gui::Label>("PLAYER 1", *context.fonts);
 	p1_label->setPosition(sf::Vector2f(80.f, 100.f));
@@ -20,14 +23,7 @@ SettingsState::SettingsState(StateStack& stack, Context context)
 	AddButtonLabel(Action::kBulletFire, 300.f, "Fire", context, PlayerID::kPlayer1);
 	AddButtonLabel(Action::kMissileFire, 350.f, "Missile Fire", context, PlayerID::kPlayer1);
 
-	// Initialize default keybindings if not already set
-	// Player 1 Defaults
-	context.player->AssignKey(Action::kMoveUp, sf::Keyboard::Scancode::W);
-	context.player->AssignKey(Action::kMoveLeft, sf::Keyboard::Scancode::A);
-	context.player->AssignKey(Action::kMoveRight, sf::Keyboard::Scancode::D);
-	context.player->AssignKey(Action::kBulletFire, sf::Keyboard::Scancode::Space);
-	context.player->AssignKey(Action::kMissileFire, sf::Keyboard::Scancode::LControl);
-
+	// Update labels with currently loaded bindings
 	UpdateLabels();
 
 	auto back_button = std::make_shared<gui::Button>(context);

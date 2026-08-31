@@ -105,15 +105,6 @@ void CollisionHandler::HandleCollisions()
 				player2.SetCollisionImmunity(kCollisionGracePeriod);
 			}
 		}
-		// Legacy single-player collision handling
-		else if (MatchesCategories(pair, ReceiverCategories::kPlayerAircraft, ReceiverCategories::kEnemyAircraft))
-		{
-			auto& player = static_cast<Aircraft&>(*pair.first);
-			auto& enemy = static_cast<Aircraft&>(*pair.second);
-			//Collision response
-			player.Damage(enemy.GetHitPoints());
-			enemy.Destroy();
-		}
 		// Pickup collection
 		else if (MatchesCategories(pair, ReceiverCategories::kPlayerAircraft, ReceiverCategories::kPickup))
 		{
@@ -143,15 +134,6 @@ void CollisionHandler::HandleCollisions()
 			auto& projectile = static_cast<Projectile&>(*pair.second);
 			//Collision response
 			player.Damage(projectile.GetDamage());
-			projectile.Destroy();
-		}
-		// Legacy enemy hit by player projectile
-		else if (MatchesCategories(pair, ReceiverCategories::kEnemyAircraft, ReceiverCategories::kAlliedProjectile))
-		{
-			auto& aircraft = static_cast<Aircraft&>(*pair.first);
-			auto& projectile = static_cast<Projectile&>(*pair.second);
-			//Collision response
-			aircraft.Damage(projectile.GetDamage());
 			projectile.Destroy();
 		}
 	}

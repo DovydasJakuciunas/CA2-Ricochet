@@ -2,8 +2,10 @@
 #include "mission_status.hpp"
 #include "statestack.hpp"
 
-GameState::GameState(StateStack& stack, Context context) : State(stack, context), m_world(*context.window, *context.fonts, *context.sound), m_player(*context.player)
+GameState::GameState(StateStack& stack, Context context) : State(stack, context), m_world(*context.window, *context.fonts, *context.sound, context.keys1), m_player(*context.player)
 {
+	// Set the key binding for the player in single-player mode
+	m_player.SetKeyBinding(context.keys1);
 
 	GetStack()->SetWorld(&m_world);
 	context.music->Play(MusicThemes::kMissionTheme);

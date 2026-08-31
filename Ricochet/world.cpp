@@ -8,14 +8,16 @@
 #include "entity.hpp"
 #include "collision_handler.hpp"
 #include "gameplay_manager.hpp"
+#include "key_binding.hpp"
 #include "physics_simulator.hpp"
 
-World::World(sf::RenderTarget& output_target, FontHolder& font, SoundPlayer& sounds)
+World::World(sf::RenderTarget& output_target, FontHolder& font, SoundPlayer& sounds, const KeyBinding* key_binding)
 	: m_target(output_target)
 	, m_camera(output_target.getDefaultView())
 	, m_textures()
 	, m_fonts(font)
 	, m_sounds(sounds)
+	, m_key_binding(key_binding)
 	, m_scene_graph(ReceiverCategories::kNone)
 	, m_scene_layers()
 	, m_world_bounds(sf::Vector2f(0.f, 0.f), sf::Vector2f(m_camera.getSize().x, m_camera.getSize().y))
@@ -237,6 +239,12 @@ Aircraft* World::AddAircraft(uint8_t aircraft_id, PlayerID player_id)
 	// Create a new aircraft with default type (Eagle) and the specified player ID
 	std::unique_ptr<Aircraft> aircraft(new Aircraft(AircraftType::kEagle, m_textures, m_fonts, player_id));
 	Aircraft* aircraft_ptr = aircraft.get();
+
+	// Set key binding for animation if available
+	if (m_key_binding)
+	{
+		aircraft_ptr->SetKeyBinding(m_key_binding);
+	}
 
 	// Store in the map
 	m_networked_aircraft[aircraft_id] = aircraft_ptr;

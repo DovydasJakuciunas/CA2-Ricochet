@@ -40,14 +40,13 @@ public:
 	void HandleNetworkEvent(Action action, CommandQueue& commands);
 	void HandleNetworkRealtimeChange(Action action, bool action_enabled);
 	bool IsLocal() const;
+	void SetKeyBinding(const KeyBinding* binding);
 
 private:
 	void InitialiseActions();
 	static bool IsRealTimeAction(Action action);
 
 private:
-	std::map<sf::Keyboard::Scancode, Action> m_key_binding;
-
 	MissionStatus m_current_mission_status;
 	bool m_was_forward_pressed;
 
@@ -56,7 +55,7 @@ private:
 
 	//Multiplayer Additions
 private:
-	const KeyBinding* m_key_binding_network;
+	const KeyBinding* m_key_binding;
 	std::map<Action, Command> m_action_binding;
 	std::map<Action, bool> m_action_proxies;
 	uint8_t m_identifier;

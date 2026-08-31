@@ -15,10 +15,12 @@
 #include "physics_simulator.hpp"
 #include "network_node.hpp"
 
+class KeyBinding;
+
 class World
 {
 public:
-	explicit World(sf::RenderTarget& output_target, FontHolder& font, SoundPlayer& sounds);
+	explicit World(sf::RenderTarget& output_target, FontHolder& font, SoundPlayer& sounds, const KeyBinding* key_binding = nullptr);
 	void Update(sf::Time dt);
 	void Draw();
 
@@ -55,6 +57,7 @@ private:
 	TextureHolder m_textures;
 	FontHolder& m_fonts;
 	SoundPlayer& m_sounds;
+	const KeyBinding* m_key_binding;
 	SceneNode m_scene_graph;
 	std::array<SceneNode*, static_cast<int>(SceneLayers::kLayerCount)> m_scene_layers;
 	sf::FloatRect m_world_bounds;

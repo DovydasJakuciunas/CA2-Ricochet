@@ -1,6 +1,9 @@
 #include "key_binding.hpp"
 #include <string>
 #include <algorithm>
+#include <fstream>
+#include <sstream>
+#include <iostream>
 
 KeyBinding::KeyBinding(int control_preconfiguration)
 	: m_key_map()
@@ -81,4 +84,60 @@ bool IsRealtimeAction(Action action)
 	default:
 		return false;
 	}
+}
+
+void KeyBinding::SaveToFile(const std::string& filename) const
+{
+	std::ofstream outfile(filename);
+	if (!outfile.is_open())
+	{
+		return;
+	}
+
+	for (const auto& pair : m_key_map)
+	{
+		// Save: scancode=action
+		outfile << static_cast<int>(pair.first) << "=" << static_cast<int>(pair.second) << std::endl;
+	}
+
+	outfile.close();
+}
+
+void KeyBinding::LoadFromFile(const std::string& filename)
+{
+	std::ifstream infile(filename);
+	if (!infile.is_open())
+	{
+		return;
+	}
+
+	std::string line;
+	m_key_map.clear();  // Clear existing bindings
+
+	while (std::getline(infile, line))
+	{
+		if (line.empty() || line[0] == '#')
+			continue;  // Skip empty lines and comments
+
+		size_t pos = line.find('=');
+		if (pos == std::string::npos)
+			continue;  // Skip invalid lines
+
+		try
+		{
+			int scancode_int = std::stoi(line.substr(0, pos));
+			int action_int = std::stoi(line.substr(pos + 1));
+
+			sf::Keyboard::Scancode scancode = static_cast<sf::Keyboard::Scancode>(scancode_int);
+			Action action = static_cast<Action>(action_int);
+
+			m_key_map[scancode] = action;
+		}
+		catch (const std::exception& e)
+		{
+			std::cerr << "[KeyBinding] Error parsing line: " << line << " - " << e.what() << std::endl;
+		}
+	}
+
+	infile.close();
 }
