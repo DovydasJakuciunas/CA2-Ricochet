@@ -7,6 +7,9 @@
 #include <thread>
 #include <cstdint>
 #include <map>
+#include <memory>
+
+class PhysicsSimulator;
 
 class GameServer
 {
@@ -76,4 +79,6 @@ private:
 
 	sf::Time m_last_spawn_time;
 	sf::Time m_time_for_next_spawn;
+
+	std::unique_ptr<PhysicsSimulator> m_physics_simulator;
 };

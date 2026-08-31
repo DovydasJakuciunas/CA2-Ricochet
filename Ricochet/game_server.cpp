@@ -3,6 +3,7 @@
 #include "aircraft_type.hpp"
 #include "pickup_type.hpp"
 #include "utility.hpp"
+#include "physics_simulator.hpp"
 #include <SFML/Network/Packet.hpp>
 #include <SFML/System/Sleep.hpp>
 #include <iostream>
@@ -19,6 +20,7 @@ GameServer::GameServer(sf::Vector2f battlefield_size)
     , m_waiting_thread_end(false)
     , m_last_spawn_time(sf::Time::Zero)
     , m_time_for_next_spawn(sf::seconds(5.f))
+    , m_physics_simulator(std::make_unique<PhysicsSimulator>(m_battlefield_rect, sf::View()))
     , m_thread(&GameServer::ExecutionThread, this)
 {
     m_listener_socket.setBlocking(false);
@@ -141,25 +143,40 @@ void GameServer::ExecutionThread()
 
 void GameServer::Tick()
 {
-    UpdateClientState();
-
-    //Check if the game is over = all planes position.y < offset
-    bool all_aircraft_done = true;
-    for (const auto& current : m_aircraft_info)
+    // Apply server-side physics: bounce aircraft off walls
+    if (m_physics_simulator)
     {
-        //As long as one player has not crossed the finish line the game is live
-        if (current.second.m_position.y > 0.f)
+        for (auto& aircraft_pair : m_aircraft_info)
         {
-            all_aircraft_done = false;
-            break;
+            AircraftInfo& info = aircraft_pair.second;
+            sf::FloatRect aircraft_bounds(info.m_position, sf::Vector2f(40.f, 40.f));  // Approximate aircraft size
+
+            // Check left boundary
+            if (aircraft_bounds.position.x <= m_battlefield_rect.position.x)
+            {
+                info.m_position.x = m_battlefield_rect.position.x + (aircraft_bounds.size.x / 2.f);
+            }
+            // Check right boundary
+            else if (aircraft_bounds.position.x + aircraft_bounds.size.x >= m_battlefield_rect.position.x + m_battlefield_rect.size.x)
+            {
+                info.m_position.x = m_battlefield_rect.position.x + m_battlefield_rect.size.x - (aircraft_bounds.size.x / 2.f);
+            }
+
+            // Check top boundary
+            if (aircraft_bounds.position.y <= m_battlefield_rect.position.y)
+            {
+                info.m_position.y = m_battlefield_rect.position.y + (aircraft_bounds.size.y / 2.f);
+            }
+            // Check bottom boundary
+            else if (aircraft_bounds.position.y + aircraft_bounds.size.y >= m_battlefield_rect.position.y + m_battlefield_rect.size.y)
+            {
+                info.m_position.y = m_battlefield_rect.position.y + m_battlefield_rect.size.y - (aircraft_bounds.size.y / 2.f);
+            }
         }
     }
-    if (all_aircraft_done)
-    {
-        sf::Packet mission_success_packet;
-        mission_success_packet << static_cast<uint8_t>(Server::PacketType::kMissionSuccess);
-        SendToAll(mission_success_packet);
-    }
+
+    // Now broadcast the corrected positions to all clients
+    UpdateClientState();
 
     //Remove aircraft that have been destroyed
     for (auto itr = m_aircraft_info.begin(); itr != m_aircraft_info.end();)

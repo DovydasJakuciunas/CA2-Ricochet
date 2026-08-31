@@ -1,6 +1,7 @@
 #include "world.hpp"
 #include "sprite_node.hpp"
 #include <vector>
+#include <algorithm>
 #include "pickup.hpp"
 #include "particle_node.hpp"
 #include "particletype.hpp"
@@ -10,6 +11,7 @@
 #include "gameplay_manager.hpp"
 #include "key_binding.hpp"
 #include "physics_simulator.hpp"
+#include "gameplay_coordinator.hpp"
 
 World::World(sf::RenderTarget& output_target, FontHolder& font, SoundPlayer& sounds, const KeyBinding* key_binding)
 	: m_target(output_target)
@@ -20,7 +22,7 @@ World::World(sf::RenderTarget& output_target, FontHolder& font, SoundPlayer& sou
 	, m_key_binding(key_binding)
 	, m_scene_graph(ReceiverCategories::kNone)
 	, m_scene_layers()
-	, m_world_bounds(sf::Vector2f(0.f, 0.f), sf::Vector2f(m_camera.getSize().x, m_camera.getSize().y))
+	, m_world_bounds(sf::Vector2f(0.f, 0.f), sf::Vector2f(1024.f, 768.f))
 	, m_pickup_spawn_timer(sf::seconds(0.f))
 	, m_collision_handler(nullptr)
 	, m_gameplay_manager(nullptr)
@@ -34,64 +36,53 @@ World::World(sf::RenderTarget& output_target, FontHolder& font, SoundPlayer& sou
 
 	BuildScene();
 	SetupNetworkNode();
+
+	// Initialize GameplayCoordinator after scene is built with empty players list
+	// The list will be populated as aircraft are added via AddAircraft()
+	m_gameplay_coordinator = std::make_unique<GameplayCoordinator>(
+		m_players_list,
+		m_scene_graph,
+		m_scene_layers[static_cast<int>(SceneLayers::kUpperAir)],
+		m_world_bounds,
+		m_camera,
+		m_command_queue,
+		m_textures,
+		m_sounds
+	);
 }
 
 void World::Update(sf::Time dt)
 {
-	//UpdateSounds();
-
 	//Process commands from the scenegraph
 	while (!m_command_queue.IsEmpty())
 	{
 		m_scene_graph.OnCommand(m_command_queue.Pop(), dt);
 	}
 
-	// Use collision handler to process all collisions
-	if (m_collision_handler)
-	{
-		m_collision_handler->HandleCollisions();
-	}
-
-	// Detect kills and handle respawns using gameplay manager
-	if (m_gameplay_manager)
-	{
-		m_gameplay_manager->Update();
-
-		// Check if players died and respawn them
-		for (auto& pair : m_networked_aircraft)
-		{
-			Aircraft* player = pair.second;
-			if (player && player->IsMarkedForRemoval())
-			{
-				player->Respawn();
-				player->setPosition(GetNextSpawnPoint());
-			}
-		}
-	}
+	// Update scene graph first to move all entities based on their velocity
+	m_scene_graph.Update(dt, m_command_queue);
 
 	m_scene_graph.RemoveWrecks();
 
-	m_scene_graph.Update(dt, m_command_queue);
+	// Use GameplayCoordinator for all gameplay updates (collision handling, physics, etc.)
+	// Applied AFTER scene graph update to ensure bounces are applied after movement
+	if (m_gameplay_coordinator)
+	{
+		m_gameplay_coordinator->Update(dt);
+	}
+
+	// Check if players died and respawn them
+	for (auto& pair : m_networked_aircraft)
+	{
+		Aircraft* player = pair.second;
+		if (player && player->IsMarkedForRemoval())
+		{
+			player->Respawn();
+			player->setPosition(GetNextSpawnPoint());
+		}
+	}
 
 	SpawnRandomPickups();
-
-	// Use physics simulator for physics updates
-	if (m_physics_simulator)
-	{
-		m_physics_simulator->BounceProjectiles(m_command_queue);
-
-		// Create vector of all players for boundary collision
-		std::vector<Aircraft*> players;
-		for (auto& pair : m_networked_aircraft)
-		{
-			if (pair.second)
-			{
-				players.push_back(pair.second);
-			}
-		}
-
-		m_physics_simulator->HandlePlayerBoundaryCollision(players);
-	}
 }
 
 void World::Draw()
@@ -249,6 +240,9 @@ Aircraft* World::AddAircraft(uint8_t aircraft_id, PlayerID player_id)
 	// Store in the map
 	m_networked_aircraft[aircraft_id] = aircraft_ptr;
 
+	// Add to players list for collision handling
+	m_players_list.push_back(aircraft_ptr);
+
 	// Add to scene graph
 	m_scene_layers[static_cast<int>(SceneLayers::kUpperAir)]->AttachChild(std::move(aircraft));
 
@@ -264,6 +258,13 @@ void World::RemoveAircraft(uint8_t aircraft_id)
 		if (it->second)
 		{
 			it->second->Destroy();
+
+			// Remove from players list
+			auto player_it = std::find(m_players_list.begin(), m_players_list.end(), it->second);
+			if (player_it != m_players_list.end())
+			{
+				m_players_list.erase(player_it);
+			}
 		}
 		m_networked_aircraft.erase(it);
 	}

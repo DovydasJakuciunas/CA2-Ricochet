@@ -14,6 +14,7 @@
 #include "gameplay_manager.hpp"
 #include "physics_simulator.hpp"
 #include "network_node.hpp"
+#include "gameplay_coordinator.hpp"
 
 class KeyBinding;
 
@@ -73,9 +74,11 @@ private:
 	std::unique_ptr<CollisionHandler> m_collision_handler;
 	std::unique_ptr<GameplayManager> m_gameplay_manager;
 	std::unique_ptr<PhysicsSimulator> m_physics_simulator;
+	std::unique_ptr<GameplayCoordinator> m_gameplay_coordinator;
 
 	// Multiplayer aircraft management - Player 1 = ID 0, Player 2 = ID 1
 	std::map<uint8_t, Aircraft*> m_networked_aircraft;
+	std::vector<Aircraft*> m_players_list;  // Maintained list for GameplayCoordinator
 	NetworkNode* m_network_node;
 
 	// Dynamic spawn point management
