@@ -20,17 +20,29 @@ sf::IpAddress GetAddressFromFile()
 		std::string ip_address;
 		if (input_file >> ip_address)
 		{
+			std::cout << "[CLIENT] Read IP from ip.txt: " << ip_address << std::endl;
 			if (auto address = sf::IpAddress::resolve(ip_address))
 			{
+				std::cout << "[CLIENT] Successfully resolved IP to: " << address->toString() << std::endl;
 				return *address;
 			}
+			else
+			{
+				std::cout << "[CLIENT] ERROR: Failed to resolve IP address: " << ip_address << std::endl;
+			}
+		}
+		else
+		{
+			std::cout << "[CLIENT] WARNING: ip.txt file not found or empty" << std::endl;
 		}
 	}
 
 	//If the open/read failed, create a new file
+	std::cout << "[CLIENT] Creating new ip.txt with localhost (127.0.0.1)" << std::endl;
 	std::ofstream output_file("ip.txt");
 	sf::IpAddress local_address = sf::IpAddress::LocalHost;
 	output_file << local_address.toString();
+	std::cout << "[CLIENT] Created ip.txt with address: " << local_address.toString() << std::endl;
 	return local_address;
 }
 
@@ -72,33 +84,61 @@ MultiplayerGameState::MultiplayerGameState(StateStack& stack, Context context, b
 
 	if (m_host)
 	{
-		std::cout << "Host creating a server" << std::endl;
+		std::cout << "[CLIENT] Host creating a server" << std::endl;
 		m_game_server.reset(new GameServer(sf::Vector2f(m_window.getSize())));
-		std::cout << "Server created" << std::endl;
+		std::cout << "[CLIENT] Server created" << std::endl;
 		ip = sf::IpAddress::LocalHost;
 	}
 	else
 	{
+		std::cout << "[CLIENT] Client attempting to read server address from ip.txt..." << std::endl;
 		ip = GetAddressFromFile();
+		if (ip)
+		{
+			std::cout << "[CLIENT] Successfully read server address: " << ip->toString() << std::endl;
+		}
+		else
+		{
+			std::cout << "[CLIENT] ERROR: Failed to read valid server address from ip.txt" << std::endl;
+		}
 	}
 
 	if (ip)
 	{
+		std::cout << "[CLIENT] Attempting to connect to server at IP=" << ip->toString() << ", PORT=" << SERVER_PORT << ", TIMEOUT=5s" << std::endl;
 		auto status = m_socket.connect(*ip, SERVER_PORT, sf::seconds(5.f));
 
 		if (status == sf::Socket::Status::Done)
 		{
+			std::cout << "[CLIENT] *** CONNECTION SUCCESSFUL *** Connected to " << ip->toString() << ":" << SERVER_PORT << std::endl;
 			m_connected = true;
 			// Set non-blocking ONLY after a successful connection
 			m_socket.setBlocking(false);
 		}
+		else if (status == sf::Socket::Status::NotReady)
+		{
+			std::cout << "[CLIENT] *** CONNECTION FAILED *** Status: NotReady (timeout or no response)" << std::endl;
+			m_failed_connection_clock.restart();
+		}
+		else if (status == sf::Socket::Status::Partial)
+		{
+			std::cout << "[CLIENT] *** CONNECTION FAILED *** Status: Partial (incomplete connection)" << std::endl;
+			m_failed_connection_clock.restart();
+		}
+		else if (status == sf::Socket::Status::Disconnected)
+		{
+			std::cout << "[CLIENT] *** CONNECTION FAILED *** Status: Disconnected" << std::endl;
+			m_failed_connection_clock.restart();
+		}
 		else
 		{
+			std::cout << "[CLIENT] *** CONNECTION FAILED *** Status: Error (unknown error)" << std::endl;
 			m_failed_connection_clock.restart();
 		}
 	}
 	else
 	{
+		std::cout << "[CLIENT] ERROR: IP address is null/invalid, cannot connect" << std::endl;
 		m_failed_connection_clock.restart();
 	}
 
@@ -221,10 +261,14 @@ bool MultiplayerGameState::Update(sf::Time dt)
 			position_update_packet << static_cast<uint8_t>(Client::PacketType::kStateUpdate);
 			position_update_packet << static_cast<uint8_t>(m_local_player_identifiers.size());
 
+			std::cout << "[CLIENT] Sending kStateUpdate - " << static_cast<int>(m_local_player_identifiers.size()) << " local aircraft" << std::endl;
+
 			for (uint8_t identifier : m_local_player_identifiers)
 			{
 				if (Aircraft* aircraft = m_world.GetAircraft(identifier))
 				{
+					std::cout << "[CLIENT]   Aircraft ID: " << static_cast<int>(identifier)
+							  << " Position: (" << aircraft->getPosition().x << ", " << aircraft->getPosition().y << ")" << std::endl;
 					position_update_packet << identifier << aircraft->getPosition().x << aircraft->getPosition().y << static_cast<uint8_t>(aircraft->GetHitPoints()) << static_cast<uint8_t>(aircraft->GetWeaponSystem().GetMissileAmmo());
 				}
 			}
@@ -350,11 +394,25 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 		uint8_t aircraft_identifier;
 		sf::Vector2f aircraft_position;
 		packet >> aircraft_identifier >> aircraft_position.x >> aircraft_position.y;
+
+		std::cout << "[MULTIPLAYER] Received kSpawnSelf packet - Creating my own aircraft (ID: " << static_cast<int>(aircraft_identifier) << ")" << std::endl;
+		std::cout << "[MULTIPLAYER] Aircraft position: (" << aircraft_position.x << ", " << aircraft_position.y << ")" << std::endl;
+
 		Aircraft* aircraft = m_world.AddAircraft(aircraft_identifier);
-		aircraft->setPosition(aircraft_position);
+		if (aircraft)
+		{
+			std::cout << "[MULTIPLAYER] *** SUCCESSFULLY ADDED MY AIRCRAFT TO WORLD ***" << std::endl;
+			aircraft->setPosition(aircraft_position);
+		}
+		else
+		{
+			std::cout << "[MULTIPLAYER] ERROR: Failed to add aircraft to world!" << std::endl;
+		}
+
 		m_players[aircraft_identifier].reset(new Player(&m_socket, aircraft_identifier, GetContext().keys1));
 		m_local_player_identifiers.push_back(aircraft_identifier);
 		m_game_started = true;
+		std::cout << "[MULTIPLAYER] Game started! Local players: " << m_local_player_identifiers.size() << std::endl;
 	}
 	break;
 
@@ -364,9 +422,22 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 		sf::Vector2f aircraft_position;
 		packet >> aircraft_identifier >> aircraft_position.x >> aircraft_position.y;
 
+		std::cout << "[MULTIPLAYER] Received kPlayerConnect packet - Remote player connecting (ID: " << static_cast<int>(aircraft_identifier) << ")" << std::endl;
+		std::cout << "[MULTIPLAYER] Remote aircraft position: (" << aircraft_position.x << ", " << aircraft_position.y << ")" << std::endl;
+
 		Aircraft* aircraft = m_world.AddAircraft(aircraft_identifier);
-		aircraft->setPosition(aircraft_position);
+		if (aircraft)
+		{
+			std::cout << "[MULTIPLAYER] *** SUCCESSFULLY ADDED REMOTE AIRCRAFT TO WORLD ***" << std::endl;
+			aircraft->setPosition(aircraft_position);
+		}
+		else
+		{
+			std::cout << "[MULTIPLAYER] ERROR: Failed to add remote aircraft to world!" << std::endl;
+		}
+
 		m_players[aircraft_identifier].reset(new Player(&m_socket, aircraft_identifier, nullptr));
+		std::cout << "[MULTIPLAYER] Remote player registered. Total players: " << m_players.size() << std::endl;
 	}
 	break;
 
@@ -382,10 +453,9 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 	case Server::PacketType::kInitialState:
 	{
 		uint8_t aircraft_count;
-		float world_height, current_scroll;
-		packet >> world_height >> current_scroll;
-
 		packet >> aircraft_count;
+		std::cout << "[MULTIPLAYER] Received kInitialState packet - Setting up world with " << static_cast<int>(aircraft_count) << " aircraft" << std::endl;
+
 		for (uint8_t i = 0; i < aircraft_count; ++i)
 		{
 			uint8_t aircraft_identifier;
@@ -394,13 +464,25 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 			sf::Vector2f aircraft_position;
 			packet >> aircraft_identifier >> aircraft_position.x >> aircraft_position.y >> hitpoints >> missile_ammo;
 
+			std::cout << "[MULTIPLAYER] Initial state - Adding aircraft ID: " << static_cast<int>(aircraft_identifier) 
+					  << " at position (" << aircraft_position.x << ", " << aircraft_position.y << ")" << std::endl;
+
 			Aircraft* aircraft = m_world.AddAircraft(aircraft_identifier);
-			aircraft->setPosition(aircraft_position);
-			aircraft->SetHitpoints(hitpoints);
-			aircraft->GetWeaponSystem().SetMissileAmmo(missile_ammo);
+			if (aircraft)
+			{
+				aircraft->setPosition(aircraft_position);
+				aircraft->SetHitpoints(hitpoints);
+				aircraft->GetWeaponSystem().SetMissileAmmo(missile_ammo);
+				std::cout << "[MULTIPLAYER] *** SUCCESSFULLY ADDED AIRCRAFT ID " << static_cast<int>(aircraft_identifier) << " ***" << std::endl;
+			}
+			else
+			{
+				std::cout << "[MULTIPLAYER] ERROR: Failed to add aircraft ID " << static_cast<int>(aircraft_identifier) << std::endl;
+			}
 
 			m_players[aircraft_identifier].reset(new Player(&m_socket, aircraft_identifier, nullptr));
 		}
+		std::cout << "[MULTIPLAYER] Initial state setup complete. Total players registered: " << m_players.size() << std::endl;
 	}
 	break;
 
@@ -470,6 +552,12 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 		uint8_t aircraft_count;
 		packet >> aircraft_count;
 
+		std::cout << "\n[CLIENT] ========== RECEIVED kUpdateClientState ==========" << std::endl;
+		std::cout << "[CLIENT] Aircraft count: " << static_cast<int>(aircraft_count) << std::endl;
+		std::cout << "[CLIENT] My local players: ";
+		for (auto id : m_local_player_identifiers) std::cout << static_cast<int>(id) << " ";
+		std::cout << std::endl;
+
 		for (uint8_t i = 0; i < aircraft_count; ++i)
 		{
 			sf::Vector2f aircraft_position;
@@ -480,14 +568,33 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 
 			Aircraft* aircraft = m_world.GetAircraft(aircraft_identifier);
 			bool is_local_plane = std::find(m_local_player_identifiers.begin(), m_local_player_identifiers.end(), aircraft_identifier) != m_local_player_identifiers.end();
+
+			std::cout << "[CLIENT]   [" << static_cast<int>(i) << "] ID: " << static_cast<int>(aircraft_identifier)
+					  << " Pos: (" << aircraft_position.x << ", " << aircraft_position.y << ")"
+					  << " HP: " << static_cast<int>(hitpoints)
+					  << " Ammo: " << static_cast<int>(ammo)
+					  << " | IsLocal: " << (is_local_plane ? "YES" : "NO")
+					  << " AircraftExists: " << (aircraft ? "YES" : "NO");
+
 			if (aircraft && !is_local_plane)
 			{
-				sf::Vector2f interpolated_position = aircraft->getPosition() + (aircraft_position - aircraft->getPosition()) * 0.1f;
+				sf::Vector2f current_pos = aircraft->getPosition();
+				sf::Vector2f interpolated_position = current_pos + (aircraft_position - current_pos) * 0.5f;
+				std::cout << " -> UPDATING REMOTE | Current: (" << current_pos.x << ", " << current_pos.y << ") -> (" << interpolated_position.x << ", " << interpolated_position.y << ")" << std::endl;
 				aircraft->setPosition(interpolated_position);
 				aircraft->SetHitpoints(hitpoints);
 				aircraft->GetWeaponSystem().SetMissileAmmo(ammo);
 			}
+			else if (aircraft && is_local_plane)
+			{
+				std::cout << " -> SKIPPING LOCAL (controlled locally only)" << std::endl;
+			}
+			else if (!aircraft)
+			{
+				std::cout << " -> ERROR: AIRCRAFT NOT IN WORLD MAP!" << std::endl;
+			}
 		}
+		std::cout << "[CLIENT] ===================================================\n" << std::endl;
 	}
 	break;
 	}
