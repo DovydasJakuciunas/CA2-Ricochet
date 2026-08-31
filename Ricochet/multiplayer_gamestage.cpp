@@ -27,10 +27,11 @@ sf::IpAddress GetAddressFromFile()
 		}
 	}
 
-	//If the open/read failed, create a new file
+	//If the open/read failed or IP was invalid, create/overwrite the file with correct IP
 	std::ofstream output_file("ip.txt");
 	sf::IpAddress local_address = sf::IpAddress::LocalHost;
 	output_file << local_address.toString();
+	output_file.close();
 	return local_address;
 }
 
@@ -73,8 +74,6 @@ MultiplayerGameState::MultiplayerGameState(StateStack& stack, Context context, b
 	if (m_host)
 	{
 		m_game_server.reset(new GameServer(sf::Vector2f(m_window.getSize())));
-		std::cout << "[HOST] Server created and initialized" << std::endl;
-		std::cout << "[HOST] NOTE: Server will start listening in its background thread..." << std::endl;
 		ip = sf::IpAddress::LocalHost;
 	}
 	else
@@ -137,18 +136,30 @@ bool MultiplayerGameState::Update(sf::Time dt)
 	//Connected to the Server: Handle all the network logic
 	if (m_connected)
 	{
+		//Handle all realtime input for players with correct PlayerID
+		//In multiplayer, we DON'T execute commands on aircraft - the server handles all movement
+		//We only send the input to the server and apply server-broadcast positions
+		CommandQueue& commands = m_world.GetCommandQueue();
+		if (m_active_state && m_has_focus)
+		{
+			for (auto& pair : m_players)
+			{
+				pair.second->HandleRealTimeInput(commands);
+			}
+		}
+
+		// Clear the command queue - we don't execute movement commands on networked aircraft
+		// The server will simulate movement and send us the positions
+		while (!commands.IsEmpty())
+		{
+			commands.Pop();
+		}
+
 		m_world.Update(dt);
 
 		//Remove players whose aircraft were destroyed
-		bool found_local_plane = false;
 		for (auto itr = m_players.begin(); itr != m_players.end();)
 		{
-			//Check if there are no more local planes for remote clients
-			if (std::find(m_local_player_identifiers.begin(), m_local_player_identifiers.end(), itr->first) != m_local_player_identifiers.end())
-			{
-				found_local_plane = true;
-			}
-
 			if (!m_world.GetAircraft(itr->first))
 			{
 				itr = m_players.erase(itr);
@@ -162,21 +173,6 @@ bool MultiplayerGameState::Update(sf::Time dt)
 			else
 			{
 				++itr;
-			}
-		}
-
-		if (!found_local_plane && m_game_started)
-		{
-			RequestStackPush(StateID::kGameOver);
-		}
-
-		//Handle all realtime input for players with correct PlayerID
-		CommandQueue& commands = m_world.GetCommandQueue();
-		if (m_active_state && m_has_focus)
-		{
-			for (auto& pair : m_players)
-			{
-				pair.second->HandleRealTimeInput(commands);
 			}
 		}
 
@@ -217,23 +213,27 @@ bool MultiplayerGameState::Update(sf::Time dt)
 			m_socket.send(packet);
 		}
 
-		//Regular position updates
-		if (m_tick_clock.getElapsedTime() > sf::seconds(1.f / 20.f))
+		//Send input commands for all local aircraft
+		for (auto& pair : m_players)
 		{
-			sf::Packet position_update_packet;
-			position_update_packet << static_cast<uint8_t>(Client::PacketType::kStateUpdate);
-			position_update_packet << static_cast<uint8_t>(m_local_player_identifiers.size());
+			uint8_t aircraft_identifier = pair.first;
+			Player* player = pair.second.get();
 
-			for (uint8_t identifier : m_local_player_identifiers)
+			// Send all active/inactive actions for this aircraft
+			// GetActionProxies contains the current state of all actions
+			const auto& action_proxies = player->GetActionProxies();
+			for (const auto& action_pair : action_proxies)
 			{
-				if (Aircraft* aircraft = m_world.GetAircraft(identifier))
-				{
-					position_update_packet << identifier << aircraft->getPosition().x << aircraft->getPosition().y << static_cast<uint8_t>(aircraft->GetHitPoints()) << static_cast<uint8_t>(aircraft->GetWeaponSystem().GetMissileAmmo());
-				}
+				sf::Packet input_packet;
+				input_packet << static_cast<uint8_t>(Client::PacketType::kInputCommand);
+				input_packet << aircraft_identifier;
+				input_packet << static_cast<uint8_t>(action_pair.first);
+				input_packet << action_pair.second;
+
+				m_socket.send(input_packet);
 			}
-			m_socket.send(position_update_packet);
-			m_tick_clock.restart();
 		}
+		m_time_since_last_packet = sf::seconds(0.f);
 		m_time_since_last_packet += dt;
 	}
 
@@ -296,9 +296,9 @@ void MultiplayerGameState::OnDestroy()
 void MultiplayerGameState::DisableAllRealtimeActions(bool enable)
 {
 	m_active_state = enable;
-	for (uint8_t identifier : m_local_player_identifiers)
+	for (auto& pair : m_players)
 	{
-		m_players[identifier]->DisableAllRealtimeActions(enable);
+		pair.second->DisableAllRealtimeActions(enable);
 	}
 }
 
@@ -366,7 +366,6 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 		}
 
 		m_players[aircraft_identifier].reset(new Player(&m_socket, aircraft_identifier, GetContext().keys1));
-		m_local_player_identifiers.push_back(aircraft_identifier);
 		m_game_started = true;
 	}
 	break;
@@ -440,7 +439,6 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 
 		m_world.AddAircraft(aircraft_identifier);
 		m_players[aircraft_identifier].reset(new Player(&m_socket, aircraft_identifier, GetContext().keys1));
-		m_local_player_identifiers.emplace_back(aircraft_identifier);
 	}
 	break;
 
@@ -499,24 +497,28 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 		uint8_t aircraft_count;
 		packet >> aircraft_count;
 
-
-
 		for (uint8_t i = 0; i < aircraft_count; ++i)
 		{
 			sf::Vector2f aircraft_position;
+			float aircraft_rotation;
 			uint8_t aircraft_identifier;
 			uint8_t hitpoints;
 			uint8_t ammo;
-			packet >> aircraft_identifier >> aircraft_position.x >> aircraft_position.y >> hitpoints >> ammo;
+			packet >> aircraft_identifier >> aircraft_position.x >> aircraft_position.y >> aircraft_rotation >> hitpoints >> ammo;
 
 			Aircraft* aircraft = m_world.GetAircraft(aircraft_identifier);
-			bool is_local_plane = std::find(m_local_player_identifiers.begin(), m_local_player_identifiers.end(), aircraft_identifier) != m_local_player_identifiers.end();
 
-			if (aircraft && !is_local_plane)
+			if (aircraft)
 			{
+				// Apply server positions uniformly to all aircraft
+				// Light interpolation to smooth movement
 				sf::Vector2f current_pos = aircraft->getPosition();
 				sf::Vector2f interpolated_position = current_pos + (aircraft_position - current_pos) * 0.5f;
 				aircraft->setPosition(interpolated_position);
+
+				// Apply server rotation directly (no interpolation needed for rotation)
+				aircraft->setRotation(sf::degrees(aircraft_rotation));
+
 				aircraft->SetHitpoints(hitpoints);
 				aircraft->GetWeaponSystem().SetMissileAmmo(ammo);
 			}

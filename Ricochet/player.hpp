@@ -41,6 +41,7 @@ public:
 	void HandleNetworkRealtimeChange(Action action, bool action_enabled);
 	bool IsLocal() const;
 	void SetKeyBinding(const KeyBinding* binding);
+	const std::map<Action, bool>& GetActionProxies() const;
 
 private:
 	void InitialiseActions();

@@ -2,10 +2,13 @@
 #include "network_protocol.hpp"
 #include "aircraft_type.hpp"
 #include "pickup_type.hpp"
+#include "action.hpp"
+#include "constants.hpp"
 #include "utility.hpp"
 #include <SFML/Network/Packet.hpp>
 #include <SFML/System/Sleep.hpp>
 #include <iostream>
+#include <cmath>
 
 GameServer::GameServer(sf::Vector2f battlefield_size)
     : m_listening_state(false)
@@ -101,8 +104,6 @@ void GameServer::ExecutionThread()
         sf::Time tick_time = sf::Time::Zero;
         sf::Clock frame_clock, tick_clock;
 
-        std::cout << "[GAMESERVER] Entering main game loop" << std::endl;
-
         while (!m_waiting_thread_end)
         {
             //This is the game loop
@@ -141,6 +142,9 @@ void GameServer::ExecutionThread()
 
 void GameServer::Tick()
 {
+    // Simulate aircraft movement based on stored action states
+    SimulateMovement(sf::seconds(kTimePerFrame));
+
     UpdateClientState();
 
     //Check if the game is over = all planes position.y < offset
@@ -286,6 +290,8 @@ void GameServer::HandleIncomingPackets(sf::Packet& packet, RemotePeer& receiving
     {
         receiving_peer.m_aircraft_identifiers.emplace_back(m_aircraft_identifier_counter);
         m_aircraft_info[m_aircraft_identifier_counter].m_position = sf::Vector2f(m_battlefield_rect.size.x / 2, m_battlefield_rect.position.y + m_battlefield_rect.size.y / 2);
+        m_aircraft_info[m_aircraft_identifier_counter].m_velocity = sf::Vector2f(0.f, 0.f);
+        m_aircraft_info[m_aircraft_identifier_counter].m_rotation = 0.f;
         m_aircraft_info[m_aircraft_identifier_counter].m_hitpoints = 100;
         m_aircraft_info[m_aircraft_identifier_counter].m_missile_ammo = 2;
 
@@ -316,47 +322,29 @@ void GameServer::HandleIncomingPackets(sf::Packet& packet, RemotePeer& receiving
     }
     break;
 
-    case Client::PacketType::kStateUpdate:
+    case Client::PacketType::kInputCommand:
     {
-        uint8_t num_aircraft;
-        packet >> num_aircraft;
+        uint8_t aircraft_identifier;
+        uint8_t action_type;
+        bool action_enabled;
+        packet >> aircraft_identifier >> action_type >> action_enabled;
 
-        for (uint8_t i = 0; i < num_aircraft; ++i)
+        // Store the action state for this aircraft
+        // This will be used by the server's simulation to move the aircraft
+        if (m_aircraft_info.find(aircraft_identifier) != m_aircraft_info.end())
         {
-            uint8_t aircraft_identifier;
-            uint8_t aircraft_hitpoints;
-            uint8_t missile_ammo;
-            sf::Vector2f aircraft_position;
-            packet >> aircraft_identifier >> aircraft_position.x >> aircraft_position.y >> aircraft_hitpoints >> missile_ammo;
-            m_aircraft_info[aircraft_identifier].m_position = aircraft_position;
-            m_aircraft_info[aircraft_identifier].m_hitpoints = aircraft_hitpoints;
-            m_aircraft_info[aircraft_identifier].m_missile_ammo = missile_ammo;
+            m_aircraft_info[aircraft_identifier].m_real_time_actions[action_type] = action_enabled;
         }
     }
     break;
+
     case Client::PacketType::kGameEvent:
     {
         uint8_t action;
         float x;
-        float y;
-
-        packet >> action;
-        packet >> x;
-        packet >> y;
-
-        //Enemy explodes, with a certain probability, drop a pickup
-        //To avoid multiple messages only listen to the first peer (host)
-        if (action == GameActions::kEnemyExplode && Utility::RandomInt(3) == 0 && &receiving_peer == m_peers[0].get())
-        {
-            sf::Packet packet;
-            packet << static_cast<uint8_t>(Server::PacketType::kSpawnPickup);
-            packet << static_cast<uint8_t>(Utility::RandomInt(static_cast<int>(PickupType::kPickupCount)));
-            packet << x;
-            packet << y;
-
-            SendToAll(packet);
-        }
+        // TODO: Handle game event
     }
+    break;
     }
 }
 
@@ -381,6 +369,8 @@ void GameServer::HandleIncomingConnections()
 
         //Order the new client to spawn its player 1
         m_aircraft_info[m_aircraft_identifier_counter].m_position = sf::Vector2f(m_battlefield_rect.size.x / 2, m_battlefield_rect.position.y + m_battlefield_rect.size.y / 2);
+        m_aircraft_info[m_aircraft_identifier_counter].m_velocity = sf::Vector2f(0.f, 0.f);
+        m_aircraft_info[m_aircraft_identifier_counter].m_rotation = 0.f;
         m_aircraft_info[m_aircraft_identifier_counter].m_hitpoints = 100;
         m_aircraft_info[m_aircraft_identifier_counter].m_missile_ammo = 2;
 
@@ -504,10 +494,122 @@ void GameServer::UpdateClientState()
 
     for (const auto& aircraft : m_aircraft_info)
     {
-        update_client_state_packet << aircraft.first << aircraft.second.m_position.x << aircraft.second.m_position.y << aircraft.second.m_hitpoints << aircraft.second.m_missile_ammo;
+        update_client_state_packet << aircraft.first << aircraft.second.m_position.x << aircraft.second.m_position.y << aircraft.second.m_rotation << aircraft.second.m_hitpoints << aircraft.second.m_missile_ammo;
     }
 
     SendToAll(update_client_state_packet);
+}
+
+void GameServer::SimulateMovement(sf::Time dt)
+{
+    const float kRotationSpeed = 2.5f;  // degrees per frame
+    const float kMaxSpeed = 300.f;      // pixels per second
+    const float kAccelerationRate = 300.f;
+    const float kBoostedAccelerationRate = 15000.f;
+    const float kBoostThreshold = 2.f;
+    const float kFrictionDamping = 0.95f;  // Velocity multiplier per frame for drag
+
+    for (auto& pair : m_aircraft_info)
+    {
+        AircraftInfo& aircraft = pair.second;
+
+        // Check if move left action is active
+        if (aircraft.m_real_time_actions[static_cast<uint8_t>(Action::kMoveLeft)])
+        {
+            // Rotate left
+            aircraft.m_rotation -= kRotationSpeed;
+
+            // Align velocity to new rotation
+            double radians = Utility::toRadians(aircraft.m_rotation + 90.f);
+            float speed = std::sqrt(aircraft.m_velocity.x * aircraft.m_velocity.x + 
+                                   aircraft.m_velocity.y * aircraft.m_velocity.y);
+            if (speed > 0.f)
+            {
+                aircraft.m_velocity.x = speed * (-std::cos(radians));
+                aircraft.m_velocity.y = speed * (-std::sin(radians));
+            }
+        }
+
+        // Check if move right action is active
+        if (aircraft.m_real_time_actions[static_cast<uint8_t>(Action::kMoveRight)])
+        {
+            // Rotate right
+            aircraft.m_rotation += kRotationSpeed;
+
+            // Align velocity to new rotation
+            double radians = Utility::toRadians(aircraft.m_rotation + 90.f);
+            float speed = std::sqrt(aircraft.m_velocity.x * aircraft.m_velocity.x + 
+                                   aircraft.m_velocity.y * aircraft.m_velocity.y);
+            if (speed > 0.f)
+            {
+                aircraft.m_velocity.x = speed * (-std::cos(radians));
+                aircraft.m_velocity.y = speed * (-std::sin(radians));
+            }
+        }
+
+        // Check if move up (forward) action is active
+        if (aircraft.m_real_time_actions[static_cast<uint8_t>(Action::kMoveUp)])
+        {
+            // Accelerate forward in the direction of rotation
+            double radians = Utility::toRadians(aircraft.m_rotation + 90.f);
+            float dirX = -std::cos(radians);
+            float dirY = -std::sin(radians);
+
+            float currentSpeed = std::sqrt(aircraft.m_velocity.x * aircraft.m_velocity.x + 
+                                         aircraft.m_velocity.y * aircraft.m_velocity.y);
+
+            float acceleration = kAccelerationRate * dt.asSeconds();
+
+            // Apply boost if held for longer than threshold
+            // (simplified: just use boost rate for now)
+            acceleration = kBoostedAccelerationRate * dt.asSeconds();
+
+            if (currentSpeed < kMaxSpeed)
+            {
+                float newSpeed = std::min(currentSpeed + acceleration, kMaxSpeed);
+                aircraft.m_velocity.x = newSpeed * dirX;
+                aircraft.m_velocity.y = newSpeed * dirY;
+            }
+            else
+            {
+                aircraft.m_velocity.x = kMaxSpeed * dirX;
+                aircraft.m_velocity.y = kMaxSpeed * dirY;
+            }
+        }
+        else
+        {
+            // Apply friction/drag when not accelerating
+            aircraft.m_velocity.x *= kFrictionDamping;
+            aircraft.m_velocity.y *= kFrictionDamping;
+        }
+
+        // Apply velocity to position
+        aircraft.m_position.x += aircraft.m_velocity.x * dt.asSeconds();
+        aircraft.m_position.y += aircraft.m_velocity.y * dt.asSeconds();
+
+        // Clamp position to battlefield bounds
+        // Bounce off boundaries or stop at edges (simple clamping for now)
+        if (aircraft.m_position.x < m_battlefield_rect.position.x)
+        {
+            aircraft.m_position.x = m_battlefield_rect.position.x;
+            aircraft.m_velocity.x = 0.f;  // Stop horizontal movement
+        }
+        if (aircraft.m_position.x > m_battlefield_rect.position.x + m_battlefield_rect.size.x)
+        {
+            aircraft.m_position.x = m_battlefield_rect.position.x + m_battlefield_rect.size.x;
+            aircraft.m_velocity.x = 0.f;  // Stop horizontal movement
+        }
+        if (aircraft.m_position.y < m_battlefield_rect.position.y)
+        {
+            aircraft.m_position.y = m_battlefield_rect.position.y;
+            aircraft.m_velocity.y = 0.f;  // Stop vertical movement
+        }
+        if (aircraft.m_position.y > m_battlefield_rect.position.y + m_battlefield_rect.size.y)
+        {
+            aircraft.m_position.y = m_battlefield_rect.position.y + m_battlefield_rect.size.y;
+            aircraft.m_velocity.y = 0.f;  // Stop vertical movement
+        }
+    }
 }
 
 //It is essential to set the sockets to non-blocking - m_socket.setBlocking(false)

@@ -29,7 +29,6 @@ private:
 	TextureHolder& m_texture_holder;
 
 	std::map<int, PlayerPtr> m_players;
-	std::vector<uint8_t> m_local_player_identifiers;
 	sf::TcpSocket m_socket;
 	bool m_connected;
 	std::unique_ptr<GameServer> m_game_server;

@@ -29,6 +29,7 @@ namespace Client
 		kRequestCoopPartner, //No parameters. It is sent when the user presses Return to request a local partner. The server will AcceptCoopPartner 
 		kStateUpdate, //sf::Int32 with number of local aircraft, for each aircraft send sf::Int32 identifier, two floats for position, health and ammo 
 		kGameEvent, //This is for explosions
+		kInputCommand, // Aircraft ID (uint8_t), Action type (uint8_t), Action enabled (bool) - Replaces kStateUpdate for server-authoritative gameplay
 		kQuit
 	};
 }

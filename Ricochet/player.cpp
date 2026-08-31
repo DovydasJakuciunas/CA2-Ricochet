@@ -160,6 +160,10 @@ void Player::SetKeyBinding(const KeyBinding* binding)
     m_key_binding = binding;
 }
 
+const std::map<Action, bool>& Player::GetActionProxies() const
+{
+    return m_action_proxies;
+}
 
 void Player::HandleRealTimeInput(CommandQueue& command_queue)
 {

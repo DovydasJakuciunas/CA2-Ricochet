@@ -31,6 +31,8 @@ private:
 	struct AircraftInfo
 	{
 		sf::Vector2f m_position;
+		sf::Vector2f m_velocity;
+		float m_rotation;  // in degrees
 		uint8_t m_hitpoints;
 		uint8_t m_missile_ammo;
 		std::map<uint8_t, bool> m_real_time_actions;
@@ -42,6 +44,7 @@ private:
 	void SetListening(bool enable);
 	void ExecutionThread();
 	void Tick();
+	void SimulateMovement(sf::Time dt);
 	sf::Time Now() const;
 
 	void HandleIncomingPackets();
