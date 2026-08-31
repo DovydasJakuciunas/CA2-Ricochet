@@ -9,7 +9,7 @@
 #include "weapon_system.hpp"
 #include <cmath>
 
-CollisionHandler::CollisionHandler(const std::vector<Aircraft*>& players, SceneNode& scene_graph,
+CollisionHandler::CollisionHandler(std::vector<Aircraft*>& players, SceneNode& scene_graph,
 								   CommandQueue& command_queue, SoundPlayer& sounds)
 	: m_players(players)
 	, m_scene_graph(scene_graph)

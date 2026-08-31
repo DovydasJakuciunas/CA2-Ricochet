@@ -13,7 +13,8 @@
 #include <random>
 #include <iostream>
 
-GameplayCoordinator::GameplayCoordinator(const std::vector<Aircraft*>& players, SceneNode& scene_graph,
+// Constructor that binds references to live player list
+GameplayCoordinator::GameplayCoordinator(std::vector<Aircraft*>& players, SceneNode& scene_graph,
 	SceneNode* upper_air_layer, const sf::FloatRect& world_bounds, const sf::View& camera,
 	CommandQueue& command_queue, TextureHolder& textures, SoundPlayer& sounds)
 	: m_players(players)

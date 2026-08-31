@@ -16,7 +16,7 @@ class SoundPlayer;
 class GameplayCoordinator
 {
 public:
-	GameplayCoordinator(const std::vector<Aircraft*>& players, SceneNode& scene_graph,
+	GameplayCoordinator(std::vector<Aircraft*>& players, SceneNode& scene_graph,
 		SceneNode* upper_air_layer, const sf::FloatRect& world_bounds, const sf::View& camera,
 		CommandQueue& command_queue, TextureHolder& textures, SoundPlayer& sounds);
 
@@ -30,7 +30,7 @@ public:
 
 private:
 	// References to game objects
-	std::vector<Aircraft*> m_players;
+	std::vector<Aircraft*>& m_players;
 	SceneNode& m_scene_graph;
 	SceneNode* m_upper_air_layer;
 	const sf::FloatRect& m_world_bounds;
