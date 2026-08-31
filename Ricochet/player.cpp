@@ -52,10 +52,6 @@ struct AircraftForwardMover
 
         float holdTime = aircraft.GetMovementController().GetForwardAccelerationTime().asSeconds();
 
-        const float accelerationRate = 300.f;
-        const float boostedAccelerationRate = 15000.f;
-        const float boostThreshold = 2.f;
-
         float deltaTime = dt.asSeconds();
         float acceleration = accelerationRate * deltaTime;
 
@@ -169,6 +165,22 @@ void Player::HandleRealTimeInput(CommandQueue& command_queue)
         std::vector<Action> activeActions = m_key_binding->GetRealtimeActions();
         for (Action action : activeActions)
             command_queue.Push(m_action_binding[action]);
+
+        // Check if forward key is currently pressed
+        bool isForwardPressed = sf::Keyboard::isKeyPressed(m_key_binding->GetAssignedKey(Action::kMoveUp));
+
+        if (m_was_forward_pressed && !isForwardPressed)
+        {
+            // Forward key was released - queue reset to initialize velocity baseline
+            command_queue.Push(m_action_binding[Action::kMoveUp]);  // Queue reset through ForwardMover
+        }
+        else if(!isForwardPressed)
+        {
+            AircraftDecelerator decelerator;
+        }
+
+        // Update state for next frame
+        m_was_forward_pressed = isForwardPressed;
     }
 }
 

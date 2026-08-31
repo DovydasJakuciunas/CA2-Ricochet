@@ -7,6 +7,10 @@ constexpr auto kMaxFireRate = 5;
 constexpr auto kMaxSpread = 3;
 constexpr auto kMissileRefill = 1;
 
+constexpr auto accelerationRate = 300.f;
+constexpr auto boostedAccelerationRate = 15000.f;
+constexpr auto boostThreshold = 2.f;
+
 constexpr auto kMaxPlayerHealth = 100;
 constexpr auto kRotationSpeed = 2.5f;
 constexpr auto kMaxBounces = 2;

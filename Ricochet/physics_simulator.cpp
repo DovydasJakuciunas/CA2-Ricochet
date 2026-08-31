@@ -41,12 +41,10 @@ void PhysicsSimulator::HandlePlayerBoundaryCollision(const std::vector<Aircraft*
 void PhysicsSimulator::BounceAircraftOffWall(Aircraft* aircraft)
 {
 	const sf::Time kWallBounceGracePeriod = sf::milliseconds(250);
-	const float bounce_force = 500.f;
 
 	sf::Vector2f position = aircraft->getPosition();
 	sf::Vector2f velocity = aircraft->GetVelocity();
 	sf::FloatRect aircraft_bounds = aircraft->GetBoundingRect();
-
 
 	bool bounced = false;
 
@@ -54,16 +52,8 @@ void PhysicsSimulator::BounceAircraftOffWall(Aircraft* aircraft)
 	if (aircraft_bounds.position.x <= m_world_bounds.position.x)
 	{
 		position.x = m_world_bounds.position.x + (aircraft_bounds.size.x / 2.f);
-		float speed = std::sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
+		// Just reverse the X component (moving toward wall)
 		velocity.x = -velocity.x;
-		if (speed > 0.f)
-		{
-			velocity = (velocity / speed) * bounce_force;
-		}
-		else
-		{
-			velocity = sf::Vector2f(bounce_force, 0.f);
-		}
 		aircraft->SetVelocity(velocity);
 		float angle = std::atan2(velocity.y, velocity.x) * 180.f / 3.14159f + 90.f;
 		aircraft->setRotation(sf::degrees(angle));
@@ -73,16 +63,8 @@ void PhysicsSimulator::BounceAircraftOffWall(Aircraft* aircraft)
 	else if (aircraft_bounds.position.x + aircraft_bounds.size.x >= m_world_bounds.position.x + m_world_bounds.size.x)
 	{
 		position.x = m_world_bounds.position.x + m_world_bounds.size.x - (aircraft_bounds.size.x / 2.f);
-		float speed = std::sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
+		// Just reverse the X component (moving toward wall)
 		velocity.x = -velocity.x;
-		if (speed > 0.f)
-		{
-			velocity = (velocity / speed) * bounce_force;
-		}
-		else
-		{
-			velocity = sf::Vector2f(-bounce_force, 0.f);
-		}
 		aircraft->SetVelocity(velocity);
 		float angle = std::atan2(velocity.y, velocity.x) * 180.f / 3.14159f + 90.f;
 		aircraft->setRotation(sf::degrees(angle));
@@ -93,16 +75,8 @@ void PhysicsSimulator::BounceAircraftOffWall(Aircraft* aircraft)
 	if (aircraft_bounds.position.y <= m_world_bounds.position.y)
 	{
 		position.y = m_world_bounds.position.y + (aircraft_bounds.size.y / 2.f);
-		float speed = std::sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
+		// Just reverse the Y component (moving toward wall)
 		velocity.y = -velocity.y;
-		if (speed > 0.f)
-		{
-			velocity = (velocity / speed) * bounce_force;
-		}
-		else
-		{
-			velocity = sf::Vector2f(0.f, bounce_force);
-		}
 		aircraft->SetVelocity(velocity);
 		float angle = std::atan2(velocity.y, velocity.x) * 180.f / 3.14159f + 90.f;
 		aircraft->setRotation(sf::degrees(angle));
@@ -112,16 +86,8 @@ void PhysicsSimulator::BounceAircraftOffWall(Aircraft* aircraft)
 	else if (aircraft_bounds.position.y + aircraft_bounds.size.y >= m_world_bounds.position.y + m_world_bounds.size.y)
 	{
 		position.y = m_world_bounds.position.y + m_world_bounds.size.y - (aircraft_bounds.size.y / 2.f);
-		float speed = std::sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
+		// Just reverse the Y component (moving toward wall)
 		velocity.y = -velocity.y;
-		if (speed > 0.f)
-		{
-			velocity = (velocity / speed) * bounce_force;
-		}
-		else
-		{
-			velocity = sf::Vector2f(0.f, -bounce_force);
-		}
 		aircraft->SetVelocity(velocity);
 		float angle = std::atan2(velocity.y, velocity.x) * 180.f / 3.14159f + 90.f;
 		aircraft->setRotation(sf::degrees(angle));
