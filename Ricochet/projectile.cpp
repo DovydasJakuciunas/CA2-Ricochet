@@ -98,15 +98,8 @@ void Projectile::DrawCurrent(sf::RenderTarget& target, sf::RenderStates states) 
 {
     sf::Sprite sprite = m_sprite;
 
-    // Apply player-specific color
-    if (m_owner_player_id == PlayerID::kPlayer1)
-    {
-        sprite.setColor(kPlayer1Color);
-    }
-    else if (m_owner_player_id == PlayerID::kPlayer2)
-    {
-        sprite.setColor(kPlayer2Color);
-    }
+    // Apply player-specific color using generic lookup
+    sprite.setColor(PlayerColors::GetColor(static_cast<unsigned int>(m_owner_player_id)));
 
     target.draw(sprite, states);
 }

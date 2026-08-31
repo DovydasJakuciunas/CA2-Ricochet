@@ -13,6 +13,5 @@ public:
 private:
 	World m_world;
 	Player& m_player;
-	bool m_game_won;
 };
 

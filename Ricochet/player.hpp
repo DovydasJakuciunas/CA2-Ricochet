@@ -19,6 +19,7 @@ class GameplayManager;
 class Player
 {
 public:
+	Player();
 	Player(sf::TcpSocket* socket, uint8_t identifier, const KeyBinding* binding);
 	void HandleEvent(const sf::Event& event, CommandQueue& command_queue, PlayerID player_id = PlayerID::kPlayer1);
 	void HandleRealTimeInput(CommandQueue& command_queue, PlayerID player_id = PlayerID::kPlayer1);
@@ -45,7 +46,7 @@ private:
 private:
 	std::map<sf::Keyboard::Scancode, Action> m_key_binding_p1;
 	std::map<sf::Keyboard::Scancode, Action> m_key_binding_p2;
-	std::map<Action, Command> m_action_binding;
+
 	MissionStatus m_current_mission_status_p1;
 	MissionStatus m_current_mission_status_p2;
 	bool m_was_forward_pressed_p1;

@@ -108,6 +108,19 @@ struct AircraftDecelerator
     }
 };
 
+Player::Player()
+    : m_socket(nullptr)
+    , m_identifier(0)
+    , m_key_binding(nullptr)
+    , m_gameplay_manager(nullptr)
+    , m_current_mission_status_p1(MissionStatus::kMissionRunning)
+    , m_current_mission_status_p2(MissionStatus::kMissionRunning)
+    , m_was_forward_pressed_p1(false)
+    , m_was_forward_pressed_p2(false)
+{
+    InitialiseActions();
+}
+
 Player::Player(sf::TcpSocket* socket, uint8_t identifier, const KeyBinding* binding)
     : m_socket(socket)
     , m_identifier(identifier)
