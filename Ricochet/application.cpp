@@ -18,6 +18,12 @@ Application::Application() : m_window(sf::VideoMode({ 1024, 768 }), "States", sf
 	m_textures.Load(TextureID::kTitleScreen, "Media/Textures/TitleScreen.png");
 	m_textures.Load(TextureID::kButtons, "Media/Textures/Buttons.png");
 
+	// Initialize KeyBindings
+	m_key_binding1 = std::make_unique<KeyBinding>(1);
+
+	// Set them in the context
+	m_stack.GetContext().keys1 = m_key_binding1.get();
+
 	RegisterStates();
 	m_stack.PushState(StateID::kTitle);
 }

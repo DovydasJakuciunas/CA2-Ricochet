@@ -14,7 +14,7 @@ GameServer::GameServer(sf::Vector2f battlefield_size)
     , m_connected_players(0)
     , m_battlefield_rect(sf::Vector2f(0.f, 0.f), sf::Vector2f(battlefield_size.x, battlefield_size.y))
     , m_aircraft_count(0)
-    , m_peers(1)
+    , m_peers(m_max_connected_players)
     , m_aircraft_identifier_counter(1)
     , m_waiting_thread_end(false)
     , m_last_spawn_time(sf::Time::Zero)
@@ -23,7 +23,11 @@ GameServer::GameServer(sf::Vector2f battlefield_size)
 {
     std::cout << "[GAMESERVER] Initializing server with battlefield size: " << battlefield_size.x << "x" << battlefield_size.y << std::endl;
     m_listener_socket.setBlocking(false);
-    m_peers[0].reset(new RemotePeer);
+    // Pre-allocate all peer slots to prevent out-of-bounds access
+    for (std::size_t i = 0; i < m_max_connected_players; ++i)
+    {
+        m_peers[i].reset(new RemotePeer);
+    }
     std::cout << "[GAMESERVER] Server initialization complete" << std::endl;
 }
 
@@ -369,6 +373,14 @@ void GameServer::HandleIncomingConnections()
         return;
     }
 
+    // Defensive bounds check to prevent out-of-bounds access
+    if (m_connected_players >= m_peers.size())
+    {
+        std::cout << "[GAMESERVER] WARNING: m_connected_players (" << m_connected_players 
+                  << ") exceeds m_peers size (" << m_peers.size() << "). Cannot accept more connections." << std::endl;
+        return;
+    }
+
     if (m_listener_socket.accept(m_peers[m_connected_players]->m_socket) == sf::TcpListener::Status::Done)
     {
         //Order the new client to spawn its player 1
@@ -398,10 +410,6 @@ void GameServer::HandleIncomingConnections()
         if (m_connected_players >= m_max_connected_players)
         {
             SetListening(false);
-        }
-        else
-        {
-            m_peers.emplace_back(PeerPtr(new RemotePeer()));
         }
     }
 }

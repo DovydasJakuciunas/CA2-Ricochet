@@ -53,11 +53,6 @@ MultiplayerGameState::MultiplayerGameState(StateStack& stack, Context context, b
 {
 	m_broadcast_text.setPosition(sf::Vector2f(1024.f / 2, 100.f));
 
-	m_player_invitation_text.setCharacterSize(20);
-	m_player_invitation_text.setFillColor(sf::Color::White);
-	m_player_invitation_text.setString("Press Enter to spawn player 2");
-	m_player_invitation_text.setPosition(sf::Vector2f(1000 - m_player_invitation_text.getLocalBounds().size.x, 760 - m_player_invitation_text.getLocalBounds().size.y));
-
 	//Use this for "Attempt to connect" and "Failed to connect" messages
 	m_failed_connection_text.setCharacterSize(35);
 	m_failed_connection_text.setFillColor(sf::Color::White);
@@ -127,11 +122,6 @@ void MultiplayerGameState::Draw()
 		{
 			m_window.draw(m_broadcast_text);
 		}
-
-		if (m_local_player_identifiers.size() < 2 && m_player_invitation_time < sf::seconds(0.5f))
-		{
-			m_window.draw(m_player_invitation_text);
-		}
 	}
 	else
 	{
@@ -177,21 +167,14 @@ bool MultiplayerGameState::Update(sf::Time dt)
 			RequestStackPush(StateID::kGameOver);
 		}
 
-		//Only handle the realtime input if the window has focus and the game is unpaused
+		//Handle all realtime input for players with correct PlayerID
+		CommandQueue& commands = m_world.GetCommandQueue();
 		if (m_active_state && m_has_focus)
 		{
-			CommandQueue& commands = m_world.GetCommandQueue();
 			for (auto& pair : m_players)
 			{
 				pair.second->HandleRealTimeInput(commands);
 			}
-		}
-
-		//Always handle the network input
-		CommandQueue& commands = m_world.GetCommandQueue();
-		for (auto& pair : m_players)
-		{
-			pair.second->HandleRealTimeInput(commands, static_cast<PlayerID>(pair.first));
 		}
 
 		//Handle messages from the server that may have arrived
@@ -217,13 +200,6 @@ bool MultiplayerGameState::Update(sf::Time dt)
 		}
 
 		UpdateBroadcastMessage(dt);
-
-		//Time counter for blinking second player text
-		m_player_invitation_time += dt;
-		if (m_player_invitation_time > sf::seconds(1.f))
-		{
-			m_player_invitation_time = sf::Time::Zero;
-		}
 
 		//Events occurring in the game
 		GameActions::Action game_action;
@@ -280,15 +256,8 @@ bool MultiplayerGameState::HandleEvent(const sf::Event& event)
 	const auto* key_pressed = event.getIf<sf::Event::KeyPressed>();
 	if (key_pressed)
 	{
-		//If enter pressed, add second player co-op only if there is only 1 player
-		if (key_pressed->scancode == sf::Keyboard::Scancode::Enter && m_local_player_identifiers.size() == 1)
-		{
-			sf::Packet packet;
-			packet << static_cast<uint8_t>(Client::PacketType::kRequestCoopPartner);
-			m_socket.send(packet);
-		}
 		//If escape is pressed, show the pause screen
-		else if (key_pressed->scancode == sf::Keyboard::Scancode::Escape)
+		if (key_pressed->scancode == sf::Keyboard::Scancode::Escape)
 		{
 			DisableAllRealtimeActions(false);
 			RequestStackPush(StateID::kNetworkPause);
@@ -441,7 +410,7 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 		packet >> aircraft_identifier;
 
 		m_world.AddAircraft(aircraft_identifier);
-		m_players[aircraft_identifier].reset(new Player(&m_socket, aircraft_identifier, GetContext().keys2));
+		m_players[aircraft_identifier].reset(new Player(&m_socket, aircraft_identifier, GetContext().keys1));
 		m_local_player_identifiers.emplace_back(aircraft_identifier);
 	}
 	break;

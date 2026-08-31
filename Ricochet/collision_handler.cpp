@@ -46,7 +46,7 @@ void CollisionHandler::HandleCollisions()
 	for (SceneNode::Pair pair : collision_pairs)
 	{
 		// Player-to-Player collision
-		if ((MatchesCategories(pair, ReceiverCategories::kPlayer1Aircraft, ReceiverCategories::kPlayer2Aircraft)))
+		if ((MatchesCategories(pair, ReceiverCategories::kPlayerAircraft, ReceiverCategories::kPlayerAircraft)))
 		{
 			auto& player1 = static_cast<Aircraft&>(*pair.first);
 			auto& player2 = static_cast<Aircraft&>(*pair.second);
@@ -114,8 +114,8 @@ void CollisionHandler::HandleCollisions()
 			player.Damage(enemy.GetHitPoints());
 			enemy.Destroy();
 		}
-		// Pickup collection - Player 1
-		else if (MatchesCategories(pair, ReceiverCategories::kPlayer1Aircraft, ReceiverCategories::kPickup))
+		// Pickup collection
+		else if (MatchesCategories(pair, ReceiverCategories::kPlayerAircraft, ReceiverCategories::kPickup))
 		{
 			auto& aircraft = static_cast<Aircraft&>(*pair.first);
 			auto& pickup = static_cast<Pickup&>(*pair.second);
@@ -124,51 +124,20 @@ void CollisionHandler::HandleCollisions()
 			pickup.Destroy();
 			aircraft.GetWeaponSystem().PlayLocalSound(m_command_queue, SoundEffect::kCollectPickup);
 		}
-		// Pickup collection - Player 2
-		else if (MatchesCategories(pair, ReceiverCategories::kPlayer2Aircraft, ReceiverCategories::kPickup))
-		{
-			auto& aircraft = static_cast<Aircraft&>(*pair.first);
-			auto& pickup = static_cast<Pickup&>(*pair.second);
-			//Collision response
-			pickup.Apply(aircraft);
-			pickup.Destroy();
-			aircraft.GetWeaponSystem().PlayLocalSound(m_command_queue, SoundEffect::kCollectPickup);
-		}
-		// Player 1 hit by any projectile (check owner for PvP)
-		else if (MatchesCategories(pair, ReceiverCategories::kPlayer1Aircraft, ReceiverCategories::kAlliedProjectile))
+		// Player hit by allied projectile (check owner for PvP)
+		else if (MatchesCategories(pair, ReceiverCategories::kPlayerAircraft, ReceiverCategories::kAlliedProjectile))
 		{
 			auto& player = static_cast<Aircraft&>(*pair.first);
 			auto& projectile = static_cast<Projectile&>(*pair.second);
-			// In PvP, Player 1 can be damaged by Player 2's projectiles
-			if (projectile.GetOwnerPlayerID() == PlayerID::kPlayer2)
+			// In PvP, player can be damaged by other players' projectiles
+			if (projectile.GetOwnerPlayerID() != PlayerID::kPlayer1)
 			{
 				player.Damage(projectile.GetDamage());
 				projectile.Destroy();
 			}
 		}
-		// Player 1 hit by enemy projectile
-		else if (MatchesCategories(pair, ReceiverCategories::kPlayer1Aircraft, ReceiverCategories::kEnemyProjectile))
-		{
-			auto& player = static_cast<Aircraft&>(*pair.first);
-			auto& projectile = static_cast<Projectile&>(*pair.second);
-			//Collision response
-			player.Damage(projectile.GetDamage());
-			projectile.Destroy();
-		}
-		// Player 2 hit by any projectile (check owner for PvP)
-		else if (MatchesCategories(pair, ReceiverCategories::kPlayer2Aircraft, ReceiverCategories::kAlliedProjectile))
-		{
-			auto& player = static_cast<Aircraft&>(*pair.first);
-			auto& projectile = static_cast<Projectile&>(*pair.second);
-			// In PvP, Player 2 can be damaged by Player 1's projectiles
-			if (projectile.GetOwnerPlayerID() == PlayerID::kPlayer1)
-			{
-				player.Damage(projectile.GetDamage());
-				projectile.Destroy();
-			}
-		}
-		// Player 2 hit by enemy projectile
-		else if (MatchesCategories(pair, ReceiverCategories::kPlayer2Aircraft, ReceiverCategories::kEnemyProjectile))
+		// Player hit by enemy projectile
+		else if (MatchesCategories(pair, ReceiverCategories::kPlayerAircraft, ReceiverCategories::kEnemyProjectile))
 		{
 			auto& player = static_cast<Aircraft&>(*pair.first);
 			auto& projectile = static_cast<Projectile&>(*pair.second);

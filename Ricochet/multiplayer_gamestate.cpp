@@ -53,7 +53,7 @@ MultiplayerGameState::MultiplayerGameState(StateStack& stack, Context context, b
 
 	m_player_invitation_text.setCharacterSize(20);
 	m_player_invitation_text.setFillColor(sf::Color::White);
-	m_player_invitation_text.setString("Press Enter to spawn player 2");
+	m_player_invitation_text.setString("");
 	m_player_invitation_text.setPosition(sf::Vector2f(1000 - m_player_invitation_text.getLocalBounds().size.x, 760 - m_player_invitation_text.getLocalBounds().size.y));
 
 	//Use this for "Attempt to connect" and "Failed to connect" messages
@@ -446,7 +446,7 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 		packet >> aircraft_identifier;
 
 		m_world.AddAircraft(aircraft_identifier);
-		m_players[aircraft_identifier].reset(new Player(&m_socket, aircraft_identifier, GetContext().keys2));
+		m_players[aircraft_identifier].reset(new Player(&m_socket, aircraft_identifier, GetContext().keys1));
 		m_local_player_identifiers.emplace_back(aircraft_identifier);
 	}
 	break;

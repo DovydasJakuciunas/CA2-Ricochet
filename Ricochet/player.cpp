@@ -111,39 +111,22 @@ struct AircraftDecelerator
 Player::Player()
     : m_socket(nullptr)
     , m_identifier(0)
-    , m_key_binding(nullptr)
+    , m_key_binding_network(nullptr)
     , m_gameplay_manager(nullptr)
-    , m_current_mission_status_p1(MissionStatus::kMissionRunning)
-    , m_current_mission_status_p2(MissionStatus::kMissionRunning)
-    , m_was_forward_pressed_p1(false)
-    , m_was_forward_pressed_p2(false)
+    , m_current_mission_status(MissionStatus::kMissionRunning)
+    , m_was_forward_pressed(false)
 {
     InitialiseActions();
 }
 
 Player::Player(sf::TcpSocket* socket, uint8_t identifier, const KeyBinding* binding)
-    : m_socket(socket)
-    , m_identifier(identifier)
-    , m_key_binding(binding)
-    , m_gameplay_manager(nullptr)
+	: m_socket(socket)
+	, m_identifier(identifier)
+	, m_key_binding_network(binding)
+	, m_gameplay_manager(nullptr)
 {
-    //TODO - Rewrite so its univeral 
-    /*
-    // Player 1 Key Bindings (WASD + Space/M)
-    m_key_binding_p1[sf::Keyboard::Scancode::A] = Action::kMoveLeft;
-    m_key_binding_p1[sf::Keyboard::Scancode::D] = Action::kMoveRight;
-    m_key_binding_p1[sf::Keyboard::Scancode::W] = Action::kMoveUp;
-    m_key_binding_p1[sf::Keyboard::Scancode::E] = Action::kBulletFire;
-    m_key_binding_p1[sf::Keyboard::Scancode::Q] = Action::kMissileFire;
 
-    // Player 2 Key Bindings (Arrow Keys + Numpad 0/Numpad ./Numpad Decimal)
-    m_key_binding_p2[sf::Keyboard::Scancode::Left] = Action::kMoveLeft;
-    m_key_binding_p2[sf::Keyboard::Scancode::Right] = Action::kMoveRight;
-    m_key_binding_p2[sf::Keyboard::Scancode::Up] = Action::kMoveUp;
-    m_key_binding_p2[sf::Keyboard::Scancode::Numpad0] = Action::kBulletFire;
-    m_key_binding_p2[sf::Keyboard::Scancode::NumpadDecimal] = Action::kMissileFire;
-    */
-    InitialiseActions();
+	InitialiseActions();
 
 	for (auto& pair : m_action_binding)
 	{
@@ -151,109 +134,89 @@ Player::Player(sf::TcpSocket* socket, uint8_t identifier, const KeyBinding* bind
 	}
 }
 
-void Player::HandleEvent(const sf::Event& event, CommandQueue& command_queue, PlayerID player_id)
+void Player::HandleEvent(const sf::Event& event, CommandQueue& command_queue)
 {
     const auto* key_pressed = event.getIf<sf::Event::KeyPressed>();
     if (key_pressed)
     {
-        std::map<sf::Keyboard::Scancode, Action>& key_binding = 
-            (player_id == PlayerID::kPlayer1) ? m_key_binding_p1 : m_key_binding_p2;
-
-        auto found = key_binding.find(key_pressed->scancode);
-        if (found != key_binding.end() && !IsRealTimeAction(found->second))
+        auto found = m_key_binding.find(key_pressed->scancode);
+        if (found != m_key_binding.end() && !IsRealTimeAction(found->second))
         {
             Command cmd = m_action_binding[found->second];
-            // Set category based on which player this is for
-            cmd.category = (player_id == PlayerID::kPlayer1) ?
-                static_cast<unsigned int>(ReceiverCategories::kPlayer1Aircraft) :
-                static_cast<unsigned int>(ReceiverCategories::kPlayer2Aircraft);
+            cmd.category = static_cast<unsigned int>(ReceiverCategories::kPlayerAircraft);
             command_queue.Push(cmd);
         }
     }
 }
 
-void Player::HandleRealTimeInput(CommandQueue& command_queue, PlayerID player_id)
+bool Player::IsLocal() const
 {
-    std::map<sf::Keyboard::Scancode, Action>& key_binding = 
-        (player_id == PlayerID::kPlayer1) ? m_key_binding_p1 : m_key_binding_p2;
-
-    bool& was_forward_pressed = (player_id == PlayerID::kPlayer1) ? m_was_forward_pressed_p1 : m_was_forward_pressed_p2;
-
-    // Find the forward key by looking up which key is bound to kMoveUp
-    sf::Keyboard::Scancode forward_key = sf::Keyboard::Scancode::Unknown;
-    for (auto pair : key_binding)
-    {
-        if (pair.second == Action::kMoveUp)
-        {
-            forward_key = pair.first;
-            break;
-        }
-    }
-
-    bool is_forward_currently_pressed = (forward_key != sf::Keyboard::Scancode::Unknown) && 
-                                        sf::Keyboard::isKeyPressed(forward_key);
-
-    // Determine category for this player
-    unsigned int player_category = (player_id == PlayerID::kPlayer1) ?
-        static_cast<unsigned int>(ReceiverCategories::kPlayer1Aircraft) :
-        static_cast<unsigned int>(ReceiverCategories::kPlayer2Aircraft);
-
-    for (auto pair : key_binding)
-    {
-        if (sf::Keyboard::isKeyPressed(pair.first) && IsRealTimeAction(pair.second))
-        {
-            Command cmd = m_action_binding[pair.second];
-            cmd.category = player_category;
-            command_queue.Push(cmd);
-        }
-    }
-
-    // Reset forward acceleration time if forward key is not pressed but was pressed before
-    if (!is_forward_currently_pressed && was_forward_pressed)
-    {
-        Command reset_command;
-        reset_command.category = player_category;
-        reset_command.action = DerivedAction<Aircraft>(AircraftForwardAccelerationReset());
-        command_queue.Push(reset_command);
-    }
-
-    // Apply deceleration when forward key is not pressed
-    if (!is_forward_currently_pressed)
-    {
-        Command decelerate_command;
-        decelerate_command.category = player_category;
-        decelerate_command.action = DerivedAction<Aircraft>(AircraftDecelerator());
-        command_queue.Push(decelerate_command);
-    }
-
-    was_forward_pressed = is_forward_currently_pressed;
+    // No key binding means this player is remote
+    return m_key_binding_network != nullptr;
 }
 
-void Player::AssignKey(Action action, sf::Keyboard::Scancode key, PlayerID player_id)
-{
-    std::map<sf::Keyboard::Scancode, Action>& key_binding = 
-        (player_id == PlayerID::kPlayer1) ? m_key_binding_p1 : m_key_binding_p2;
 
-    for (auto itr = key_binding.begin(); itr != key_binding.end();)
+void Player::HandleRealTimeInput(CommandQueue& command_queue)
+{
+    // Check if this is a networked game and local player or just a single player game
+    if ((m_socket && IsLocal()) || !m_socket)
+    {
+        // For networked games with local player, use network key binding
+        // For single player games, use local key binding
+        if (m_socket && IsLocal())
+        {
+            std::vector<Action> activeActions = m_key_binding_network->GetRealtimeActions();
+            for (Action action : activeActions)
+                command_queue.Push(m_action_binding[action]);
+        }
+        else if (!m_socket)
+        {
+            // Single player mode - use local key binding
+            for (auto& pair : m_key_binding)
+            {
+                if (sf::Keyboard::isKeyPressed(pair.first) && IsRealTimeAction(pair.second))
+                {
+                    Command cmd = m_action_binding[pair.second];
+                    cmd.category = static_cast<unsigned int>(ReceiverCategories::kPlayerAircraft);
+                    command_queue.Push(cmd);
+                }
+            }
+        }
+    }
+}
+
+void Player::HandleRealtimeNetworkInput(CommandQueue& commands)
+{
+    if (m_socket && !IsLocal())
+    {
+        // Traverse all realtime input proxies. Because this is a networked game, the input isn't handled directly
+        for (auto pair : m_action_proxies)
+        {
+            if (pair.second && IsRealtimeAction(pair.first))
+                commands.Push(m_action_binding[pair.first]);
+        }
+    }
+}
+
+void Player::AssignKey(Action action, sf::Keyboard::Scancode key)
+{
+    for (auto itr = m_key_binding.begin(); itr != m_key_binding.end();)
     {
         if (itr->second == action)
         {
-            key_binding.erase(itr++);
+            m_key_binding.erase(itr++);
         }
         else
         {
             ++itr;
         }
     }
-    key_binding[key] = action;
+    m_key_binding[key] = action;
 }
 
-sf::Keyboard::Scancode Player::GetAssignedKey(Action action, PlayerID player_id) const
+sf::Keyboard::Scancode Player::GetAssignedKey(Action action) const
 {
-    const std::map<sf::Keyboard::Scancode, Action>& key_binding = 
-        (player_id == PlayerID::kPlayer1) ? m_key_binding_p1 : m_key_binding_p2;
-
-    for (auto pair : key_binding)
+    for (auto pair : m_key_binding)
     {
         if (pair.second == action)
         {
@@ -263,21 +226,14 @@ sf::Keyboard::Scancode Player::GetAssignedKey(Action action, PlayerID player_id)
     return sf::Keyboard::Scancode::Unknown;
 }
 
-void Player::SetMissionStatus(MissionStatus status, PlayerID player_id)
+void Player::SetMissionStatus(MissionStatus status)
 {
-    if (player_id == PlayerID::kPlayer1)
-    {
-        m_current_mission_status_p1 = status;
-    }
-    else
-    {
-        m_current_mission_status_p2 = status;
-    }
+    m_current_mission_status = status;
 }
 
-MissionStatus Player::GetMissionStatus(PlayerID player_id) const
+MissionStatus Player::GetMissionStatus() const
 {
-    return (player_id == PlayerID::kPlayer1) ? m_current_mission_status_p1 : m_current_mission_status_p2;
+    return m_current_mission_status;
 }
 
 void Player::SetGameplayManager(GameplayManager* gameplayMgr)

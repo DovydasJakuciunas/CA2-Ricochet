@@ -21,13 +21,14 @@ class Player
 public:
 	Player();
 	Player(sf::TcpSocket* socket, uint8_t identifier, const KeyBinding* binding);
-	void HandleEvent(const sf::Event& event, CommandQueue& command_queue, PlayerID player_id = PlayerID::kPlayer1);
-	void HandleRealTimeInput(CommandQueue& command_queue, PlayerID player_id = PlayerID::kPlayer1);
+	void HandleEvent(const sf::Event& event, CommandQueue& command_queue);
+	void HandleRealTimeInput(CommandQueue& command_queue);
+	void HandleRealtimeNetworkInput(CommandQueue& commands);
 
-	void AssignKey(Action action, sf::Keyboard::Scancode key, PlayerID player_id = PlayerID::kPlayer1);
-	sf::Keyboard::Scancode GetAssignedKey(Action action, PlayerID player_id = PlayerID::kPlayer1) const;
-	void SetMissionStatus(MissionStatus status, PlayerID player_id = PlayerID::kPlayer1);
-	MissionStatus GetMissionStatus(PlayerID player_id = PlayerID::kPlayer1) const;
+	void AssignKey(Action action, sf::Keyboard::Scancode key);
+	sf::Keyboard::Scancode GetAssignedKey(Action action) const;
+	void SetMissionStatus(MissionStatus status);
+	MissionStatus GetMissionStatus() const;
 
 	// PvP score tracking - Gets from GameplayManager
 	void SetGameplayManager(GameplayManager* gameplayMgr);
@@ -38,26 +39,24 @@ public:
 	void DisableAllRealtimeActions(bool enable);
 	void HandleNetworkEvent(Action action, CommandQueue& commands);
 	void HandleNetworkRealtimeChange(Action action, bool action_enabled);
+	bool IsLocal() const;
 
 private:
 	void InitialiseActions();
 	static bool IsRealTimeAction(Action action);
 
 private:
-	std::map<sf::Keyboard::Scancode, Action> m_key_binding_p1;
-	std::map<sf::Keyboard::Scancode, Action> m_key_binding_p2;
+	std::map<sf::Keyboard::Scancode, Action> m_key_binding;
 
-	MissionStatus m_current_mission_status_p1;
-	MissionStatus m_current_mission_status_p2;
-	bool m_was_forward_pressed_p1;
-	bool m_was_forward_pressed_p2;
+	MissionStatus m_current_mission_status;
+	bool m_was_forward_pressed;
 
 	// Reference to GameplayManager for kill tracking
 	GameplayManager* m_gameplay_manager;
 
 	//Multiplayer Additions
 private:
-	const KeyBinding* m_key_binding;
+	const KeyBinding* m_key_binding_network;
 	std::map<Action, Command> m_action_binding;
 	std::map<Action, bool> m_action_proxies;
 	uint8_t m_identifier;

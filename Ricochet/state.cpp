@@ -9,7 +9,7 @@ State::~State()
 {
 }
 
-State::Context::Context(sf::RenderWindow& window, TextureHolder& textures, FontHolder& fonts, Player& player, MusicPlayer& music, SoundPlayer& sound, class World* world) : window(&window), textures(&textures), fonts(&fonts), player(&player), music(&music), sound(&sound), world(world)
+State::Context::Context(sf::RenderWindow& window, TextureHolder& textures, FontHolder& fonts, Player& player, MusicPlayer& music, SoundPlayer& sound, class World* world) : window(&window), textures(&textures), fonts(&fonts), player(&player), music(&music), sound(&sound), world(world), keys1(nullptr)
 {
 }
 

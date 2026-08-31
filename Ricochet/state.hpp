@@ -27,8 +27,7 @@ public:
 		MusicPlayer* music;
 		SoundPlayer* sound;
 		World* world;
-		KeyBinding* keys1;	//Local Player for player 1 and 2 created
-		KeyBinding* keys2;
+		KeyBinding* keys1;
 	};
 
 public:

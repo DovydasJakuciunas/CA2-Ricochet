@@ -27,6 +27,7 @@ public:
 	bool IsEmpty() const;
 
 	void SetWorld(class World* world);
+	State::Context& GetContext() { return m_context; }
 
 private:
 	State::Ptr CreateState(StateID state_id);

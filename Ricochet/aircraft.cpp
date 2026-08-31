@@ -58,8 +58,8 @@ Aircraft::Aircraft(AircraftType type, const TextureHolder& textures, const FontH
 	m_health_display = health_display.get();
 	AttachChild(std::move(health_display));
 
-	// Both player 1 and player 2 should have missile display
-	if (m_player_id == PlayerID::kPlayer1 || m_player_id == PlayerID::kPlayer2)
+	// Player aircraft should have missile display
+	if (m_player_id == PlayerID::kPlayer1)
 	{
 		std::string* missile_ammo = new std::string("");
 		std::unique_ptr<TextNode> missile_display(new TextNode(fonts, *missile_ammo));
@@ -75,12 +75,8 @@ Aircraft::~Aircraft()
 
 unsigned int Aircraft::GetCategory() const
 {
-	// Return category based on player ID
-	if (m_player_id == PlayerID::kPlayer1)
-	{
-		return static_cast<unsigned int>(ReceiverCategories::kPlayer1Aircraft);
-	}
-	return static_cast<unsigned int>(ReceiverCategories::kPlayer2Aircraft);
+	// Return universal player aircraft category
+	return static_cast<unsigned int>(ReceiverCategories::kPlayerAircraft);
 }
 
 void Aircraft::UpdateTexts()
@@ -184,12 +180,6 @@ void Aircraft::UpdateRollAnimation()
 			// Player 1: A and D keys
 			is_left_pressed = sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::A);
 			is_right_pressed = sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::D);
-		}
-		else if (m_player_id == PlayerID::kPlayer2)
-		{
-			// Player 2: Left and Right arrow keys
-			is_left_pressed = sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::Left);
-			is_right_pressed = sf::Keyboard::isKeyPressed(sf::Keyboard::Scancode::Right);
 		}
 		else
 		{

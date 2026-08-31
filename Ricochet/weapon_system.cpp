@@ -142,10 +142,8 @@ void WeaponSystem::CheckProjectileLaunch(sf::Time dt, CommandQueue& commands)
 
 bool WeaponSystem::IsAllied() const
 {
-	// For PvP, both players are allies with their own projectiles
-	// In the future, this could be based on team/player ID if needed
-	// For now, treat all player aircraft as allied
-	return m_aircraft->GetPlayerID() == PlayerID::kPlayer1 || m_aircraft->GetPlayerID() == PlayerID::kPlayer2;
+	// For single player, the player's projectiles are allied
+	return m_aircraft->GetPlayerID() == PlayerID::kPlayer1;
 }
 
 void WeaponSystem::CreateBullet(SceneNode& node, const TextureHolder& textures)

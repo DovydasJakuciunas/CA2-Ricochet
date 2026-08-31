@@ -7,6 +7,8 @@
 #include "statestack.hpp"
 #include "music_player.hpp"
 #include "sound_player.hpp"
+#include "key_binding.hpp"
+#include <memory>
 
 class Application
 {
@@ -31,5 +33,7 @@ private:
 
 	MusicPlayer m_music;
 	SoundPlayer m_sound;
+
+	std::unique_ptr<KeyBinding> m_key_binding1;
 };
 
