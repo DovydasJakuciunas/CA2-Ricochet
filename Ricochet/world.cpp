@@ -31,6 +31,7 @@ World::World(sf::RenderTarget& output_target, FontHolder& font, SoundPlayer& sou
 	GenerateSpawnPoints();
 
 	BuildScene();
+	SetupNetworkNode();
 }
 
 void World::Update(sf::Time dt)

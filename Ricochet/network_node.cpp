@@ -7,11 +7,13 @@ NetworkNode::NetworkNode()
 
 void NetworkNode::NotifyGameAction(GameActions::Type type, sf::Vector2f position)
 {
+	std::lock_guard<std::mutex> lock(m_actions_mutex);
 	m_pending_actions.push(GameActions::Action(type, position));
 }
 
 bool NetworkNode::PollGameAction(GameActions::Action& out)
 {
+	std::lock_guard<std::mutex> lock(m_actions_mutex);
 	if (m_pending_actions.empty())
 	{
 		return false;

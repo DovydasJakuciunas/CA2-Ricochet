@@ -3,6 +3,7 @@
 #include "network_protocol.hpp"
 
 #include <queue>
+#include <mutex>
 class NetworkNode : public SceneNode
 {
 public:
@@ -13,4 +14,5 @@ public:
 
 private:
 	std::queue<GameActions::Action> m_pending_actions;
+	mutable std::mutex m_actions_mutex;	// Protects access to m_pending_actions
 };

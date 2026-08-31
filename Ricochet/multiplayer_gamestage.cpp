@@ -290,7 +290,7 @@ bool MultiplayerGameState::HandleEvent(const sf::Event& event)
 		//If escape is pressed, show the pause screen
 		else if (key_pressed->scancode == sf::Keyboard::Scancode::Escape)
 		{
-			DisableAllRealtimeActions();
+			DisableAllRealtimeActions(false);
 			RequestStackPush(StateID::kNetworkPause);
 		}
 	}
@@ -321,12 +321,12 @@ void MultiplayerGameState::OnDestroy()
 	}
 }
 
-void MultiplayerGameState::DisableAllRealtimeActions()
+void MultiplayerGameState::DisableAllRealtimeActions(bool enable)
 {
-	m_active_state = false;
+	m_active_state = enable;
 	for (uint8_t identifier : m_local_player_identifiers)
 	{
-		m_players[identifier]->DisableAllRealtimeActions();
+		m_players[identifier]->DisableAllRealtimeActions(enable);
 	}
 }
 
@@ -416,9 +416,6 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 		float world_height, current_scroll;
 		packet >> world_height >> current_scroll;
 
-		m_world.SetWorldHeight(world_height);
-		m_world.SetCurrentBattleFieldPosition(current_scroll);
-
 		packet >> aircraft_count;
 		for (uint8_t i = 0; i < aircraft_count; ++i)
 		{
@@ -431,7 +428,7 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 			Aircraft* aircraft = m_world.AddAircraft(aircraft_identifier);
 			aircraft->setPosition(aircraft_position);
 			aircraft->SetHitpoints(hitpoints);
-			aircraft->SetMissileAmmo(missile_ammo);
+			aircraft->GetWeaponSystem().SetMissileAmmo(missile_ammo);
 
 			m_players[aircraft_identifier].reset(new Player(&m_socket, aircraft_identifier, nullptr));
 		}
@@ -459,7 +456,8 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 		auto itr = m_players.find(aircraft_identifier);
 		if (itr != m_players.end())
 		{
-			itr->second->HandleNetworkEvent(static_cast<Action>(action), m_world.GetCommandQueue());
+			itr->second->HandleNetworkEvent(static_cast<Action>(action)
+				, m_world.GetCommandQueue());
 		}
 	}
 	break;
@@ -480,23 +478,11 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 	}
 	break;
 
-	//New Enemy to be created
-	case Server::PacketType::kSpawnEnemy:
-	{
-		float height;
-		uint8_t type;
-		float relative_x;
-		packet >> type >> height >> relative_x;
 
-		m_world.AddEnemy(static_cast<AircraftType>(type), relative_x, height);
-		m_world.SortEnemies();
-	}
-	break;
-
-	//Mission Successfully completed
+	//Should tell what player has won and how many points
 	case Server::PacketType::kMissionSuccess:
 	{
-		RequestStackPush(StateID::kMissionSuccess);
+		RequestStackPush(StateID::kGameOver);
 	}
 	break;
 
@@ -506,20 +492,14 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 		uint8_t type;
 		sf::Vector2f position;
 		packet >> type >> position.x >> position.y;
-		m_world.CreatePickup(position, static_cast<PickupType>(type));
+		m_world.SpawnRandomPickups();
 	}
 	break;
 
 	case Server::PacketType::kUpdateClientState:
 	{
-		float current_world_position;
 		uint8_t aircraft_count;
-		packet >> current_world_position >> aircraft_count;
-
-		float current_view_position = m_world.GetViewBounds().position.y + m_world.GetViewBounds().size.y;
-
-		//Set the world's scroll compensation according to whether the view is behind or ahead
-		m_world.SetWorldScrollCompensation(current_view_position / current_world_position);
+		packet >> aircraft_count;
 
 		for (uint8_t i = 0; i < aircraft_count; ++i)
 		{
@@ -536,7 +516,7 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 				sf::Vector2f interpolated_position = aircraft->getPosition() + (aircraft_position - aircraft->getPosition()) * 0.1f;
 				aircraft->setPosition(interpolated_position);
 				aircraft->SetHitpoints(hitpoints);
-				aircraft->SetMissileAmmo(ammo);
+				aircraft->GetWeaponSystem().SetMissileAmmo(ammo);
 			}
 		}
 	}
