@@ -198,7 +198,6 @@ void GameServer::Tick()
             for (std::size_t i = 0; i < enemy_count; ++i)
             {
                 sf::Packet packet;
-                packet << static_cast<uint8_t>(Server::PacketType::kSpawnEnemy);
                 packet << static_cast<uint8_t>(1 + Utility::RandomInt(static_cast<int>(AircraftType::kAircraftCount) - 1));
                 packet << m_battlefield_rect.size.y + 500;
                 packet << next_spawn_position;
@@ -279,40 +278,6 @@ void GameServer::HandleIncomingPackets(sf::Packet& packet, RemotePeer& receiving
         bool action_enabled;
         packet >> aircraft_identifier >> action >> action_enabled;
         NotifyPlayerRealtimeChange(aircraft_identifier, action, action_enabled);
-    }
-    break;
-
-    case Client::PacketType::kRequestCoopPartner:
-    {
-        receiving_peer.m_aircraft_identifiers.emplace_back(m_aircraft_identifier_counter);
-        m_aircraft_info[m_aircraft_identifier_counter].m_position = sf::Vector2f(m_battlefield_rect.size.x / 2, m_battlefield_rect.position.y + m_battlefield_rect.size.y / 2);
-        m_aircraft_info[m_aircraft_identifier_counter].m_hitpoints = 100;
-        m_aircraft_info[m_aircraft_identifier_counter].m_missile_ammo = 2;
-
-        sf::Packet request_packet;
-        request_packet << static_cast<uint8_t>(Server::PacketType::kAcceptCoopPartner);
-        request_packet << m_aircraft_identifier_counter;
-        request_packet << m_aircraft_info[m_aircraft_identifier_counter].m_position.x;
-        request_packet << m_aircraft_info[m_aircraft_identifier_counter].m_position.y;
-
-        receiving_peer.m_socket.send(request_packet);
-        m_aircraft_count++;
-
-        // Tell everyone else about the new plane
-        sf::Packet notify_packet;
-        notify_packet << static_cast<uint8_t>(Server::PacketType::kPlayerConnect);
-        notify_packet << m_aircraft_identifier_counter;
-        notify_packet << m_aircraft_info[m_aircraft_identifier_counter].m_position.x;
-        notify_packet << m_aircraft_info[m_aircraft_identifier_counter].m_position.y;
-
-        for (PeerPtr& peer : m_peers)
-        {
-            if (peer.get() != &receiving_peer && peer->m_ready)
-            {
-                peer->m_socket.send(notify_packet);
-            }
-        }
-        m_aircraft_identifier_counter++;
     }
     break;
 

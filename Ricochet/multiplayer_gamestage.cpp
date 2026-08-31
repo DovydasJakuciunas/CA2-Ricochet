@@ -433,17 +433,6 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 	}
 	break;
 
-	case Server::PacketType::kAcceptCoopPartner:
-	{
-		uint8_t aircraft_identifier;
-		packet >> aircraft_identifier;
-
-		m_world.AddAircraft(aircraft_identifier);
-		m_players[aircraft_identifier].reset(new Player(&m_socket, aircraft_identifier, GetContext().keys1));
-		m_local_player_identifiers.emplace_back(aircraft_identifier);
-	}
-	break;
-
 	//Player event, like missile fired occurs
 	case Server::PacketType::kPlayerEvent:
 	{
