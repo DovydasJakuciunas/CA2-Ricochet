@@ -81,19 +81,15 @@ void Application::Render()
 
 void Application::RegisterStates()
 {
-	std::cout << "[APPLICATION] Registering game states..." << std::endl;
 	m_stack.RegisterState<TitleState>(StateID::kTitle);
 	m_stack.RegisterState<MenuState>(StateID::kMenu);
 	m_stack.RegisterState<GameState>(StateID::kGame);
-	std::cout << "[APPLICATION] Registering Host Game state (is_host=true)" << std::endl;
 	m_stack.RegisterState<MultiplayerGameState>(StateID::kHostGame, true);
-	std::cout << "[APPLICATION] Registering Join Game state (is_host=false)" << std::endl;
 	m_stack.RegisterState<MultiplayerGameState>(StateID::kJoinGame, false);
 	m_stack.RegisterState<PauseState>(StateID::kPause);
 	m_stack.RegisterState<SettingsState>(StateID::kSettings);
 	m_stack.RegisterState<GameOverState>(StateID::kGameOver);
 	m_stack.RegisterState<NetworkPauseState>(StateID::kNetworkPause);
-	std::cout << "[APPLICATION] All states registered successfully" << std::endl;
 }
 
 

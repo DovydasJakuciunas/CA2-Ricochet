@@ -237,8 +237,6 @@ Aircraft* World::GetAircraft(uint8_t aircraft_id)
 Aircraft* World::AddAircraft(uint8_t aircraft_id, PlayerID player_id)
 {
 	// Create a new aircraft with default type (Eagle) and the specified player ID
-	std::cout << "[WORLD] Adding new aircraft - ID: " << static_cast<int>(aircraft_id) << ", PlayerID: " << static_cast<int>(player_id) << std::endl;
-
 	std::unique_ptr<Aircraft> aircraft(new Aircraft(AircraftType::kEagle, m_textures, m_fonts, player_id));
 	Aircraft* aircraft_ptr = aircraft.get();
 
@@ -250,12 +248,9 @@ Aircraft* World::AddAircraft(uint8_t aircraft_id, PlayerID player_id)
 
 	// Store in the map
 	m_networked_aircraft[aircraft_id] = aircraft_ptr;
-	std::cout << "[WORLD] *** AIRCRAFT STORED IN m_networked_aircraft MAP ***" << std::endl;
-	std::cout << "[WORLD] Total networked aircraft in map: " << m_networked_aircraft.size() << std::endl;
 
 	// Add to scene graph
 	m_scene_layers[static_cast<int>(SceneLayers::kUpperAir)]->AttachChild(std::move(aircraft));
-	std::cout << "[WORLD] *** AIRCRAFT ATTACHED TO SCENE GRAPH ***" << std::endl;
 
 	return aircraft_ptr;
 }

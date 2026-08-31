@@ -21,14 +21,12 @@ GameServer::GameServer(sf::Vector2f battlefield_size)
     , m_time_for_next_spawn(sf::seconds(5.f))
     , m_thread(&GameServer::ExecutionThread, this)
 {
-    std::cout << "[GAMESERVER] Initializing server with battlefield size: " << battlefield_size.x << "x" << battlefield_size.y << std::endl;
     m_listener_socket.setBlocking(false);
     // Pre-allocate all peer slots to prevent out-of-bounds access
     for (std::size_t i = 0; i < m_max_connected_players; ++i)
     {
         m_peers[i].reset(new RemotePeer);
     }
-    std::cout << "[GAMESERVER] Server initialization complete" << std::endl;
 }
 
 GameServer::~GameServer()
@@ -76,21 +74,12 @@ void GameServer::SetListening(bool enable)
         if (!m_listening_state)
         {
             m_listening_state = (m_listener_socket.listen(SERVER_PORT) == sf::TcpListener::Status::Done);
-            if (m_listening_state)
-            {
-                std::cout << "[GAMESERVER] Successfully listening on port " << SERVER_PORT << std::endl;
-            }
-            else
-            {
-                std::cout << "[GAMESERVER] ERROR: Failed to listen on port " << SERVER_PORT << std::endl;
-            }
         }
     }
     else
     {
         m_listener_socket.close();
         m_listening_state = false;
-        std::cout << "[GAMESERVER] Stopped listening" << std::endl;
     }
 }
 
@@ -99,9 +88,7 @@ void GameServer::ExecutionThread()
     try
     {
         //Initialisation
-        std::cout << "[GAMESERVER] Server ExecutionThread started, setting up listener..." << std::endl;
         SetListening(true);
-        std::cout << "[GAMESERVER] Server is ready to accept connections!" << std::endl;
 
         sf::Time frame_rate = sf::seconds(1.f / 60.f);
         sf::Time frame_time = sf::Time::Zero;
@@ -139,11 +126,9 @@ void GameServer::ExecutionThread()
     }
     catch (const std::exception& e)
     {
-        std::cout << "[GAMESERVER] FATAL ERROR in ExecutionThread: " << e.what() << std::endl;
     }
     catch (...)
     {
-        std::cout << "[GAMESERVER] FATAL ERROR in ExecutionThread: Unknown exception" << std::endl;
     }
 }
 
@@ -329,8 +314,6 @@ void GameServer::HandleIncomingPackets(sf::Packet& packet, RemotePeer& receiving
         uint8_t num_aircraft;
         packet >> num_aircraft;
 
-        std::cout << "[GAMESERVER] Received kStateUpdate from client - " << num_aircraft << " aircraft" << std::endl;
-
         for (uint8_t i = 0; i < num_aircraft; ++i)
         {
             uint8_t aircraft_identifier;
@@ -338,10 +321,6 @@ void GameServer::HandleIncomingPackets(sf::Packet& packet, RemotePeer& receiving
             uint8_t missile_ammo;
             sf::Vector2f aircraft_position;
             packet >> aircraft_identifier >> aircraft_position.x >> aircraft_position.y >> aircraft_hitpoints >> missile_ammo;
-
-            std::cout << "[GAMESERVER]   Received update for Aircraft ID: " << static_cast<int>(aircraft_identifier)
-                      << " Position: (" << aircraft_position.x << ", " << aircraft_position.y << ")" << std::endl;
-
             m_aircraft_info[aircraft_identifier].m_position = aircraft_position;
             m_aircraft_info[aircraft_identifier].m_hitpoints = aircraft_hitpoints;
             m_aircraft_info[aircraft_identifier].m_missile_ammo = missile_ammo;
@@ -389,22 +368,8 @@ void GameServer::HandleIncomingConnections()
         return;
     }
 
-    std::cout << "[GAMESERVER] Listening for incoming connections... (Currently " << m_connected_players << "/" << m_max_connected_players << " players)" << std::endl;
-
     if (m_listener_socket.accept(m_peers[m_connected_players]->m_socket) == sf::TcpListener::Status::Done)
     {
-        std::cout << "[GAMESERVER] *** INCOMING CONNECTION ACCEPTED *** Player " << (m_connected_players + 1) << " connected!" << std::endl;
-        auto remote_addr = m_peers[m_connected_players]->m_socket.getRemoteAddress();
-        if (remote_addr)
-        {
-            std::cout << "[GAMESERVER] Remote address: " << remote_addr->toString() 
-                      << ":" << m_peers[m_connected_players]->m_socket.getRemotePort() << std::endl;
-        }
-        else
-        {
-            std::cout << "[GAMESERVER] Remote address: <unable to determine>" << std::endl;
-        }
-
         //Order the new client to spawn its player 1
         m_aircraft_info[m_aircraft_identifier_counter].m_position = sf::Vector2f(m_battlefield_rect.size.x / 2, m_battlefield_rect.position.y + m_battlefield_rect.size.y / 2);
         m_aircraft_info[m_aircraft_identifier_counter].m_hitpoints = 100;
@@ -418,10 +383,8 @@ void GameServer::HandleIncomingConnections()
 
         m_peers[m_connected_players]->m_aircraft_identifiers.emplace_back(m_aircraft_identifier_counter);
 
-        std::cout << "[GAMESERVER] Sending world state to new player..." << std::endl;
         BroadcastMessage("New player");
         InformWorldState(m_peers[m_connected_players]->m_socket);
-        std::cout << "[GAMESERVER] Notifying all players of new aircraft spawn (ID: " << static_cast<int>(m_aircraft_identifier_counter) << ")" << std::endl;
         NotifyPlayerSpawn(m_aircraft_identifier_counter++);
 
         m_peers[m_connected_players]->m_socket.send(packet);
@@ -431,11 +394,8 @@ void GameServer::HandleIncomingConnections()
         m_aircraft_count++;
         m_connected_players++;
 
-        std::cout << "[GAMESERVER] Player successfully registered. Total connected: " << m_connected_players << "/" << m_max_connected_players << std::endl;
-
         if (m_connected_players >= m_max_connected_players)
         {
-            std::cout << "[GAMESERVER] Maximum players reached. Server is now FULL." << std::endl;
             SetListening(false);
         }
     }
@@ -533,19 +493,12 @@ void GameServer::UpdateClientState()
     update_client_state_packet << static_cast<uint8_t>(Server::PacketType::kUpdateClientState);
     update_client_state_packet << static_cast<uint8_t>(m_aircraft_count);
 
-    std::cout << "[GAMESERVER] Broadcasting state update - Aircraft count: " << static_cast<int>(m_aircraft_count) << std::endl;
-
     for (const auto& aircraft : m_aircraft_info)
     {
-        std::cout << "[GAMESERVER]   Aircraft ID: " << static_cast<int>(aircraft.first) 
-                  << " Position: (" << aircraft.second.m_position.x << ", " << aircraft.second.m_position.y << ")"
-                  << " HP: " << static_cast<int>(aircraft.second.m_hitpoints) 
-                  << " Ammo: " << static_cast<int>(aircraft.second.m_missile_ammo) << std::endl;
         update_client_state_packet << aircraft.first << aircraft.second.m_position.x << aircraft.second.m_position.y << aircraft.second.m_hitpoints << aircraft.second.m_missile_ammo;
     }
 
     SendToAll(update_client_state_packet);
-    std::cout << "[GAMESERVER] State update sent to all clients" << std::endl;
 }
 
 //It is essential to set the sockets to non-blocking - m_socket.setBlocking(false)
