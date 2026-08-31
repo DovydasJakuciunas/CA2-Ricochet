@@ -48,7 +48,6 @@ private:
 
 private:
 	MissionStatus m_current_mission_status;
-	bool m_was_forward_pressed;
 
 	// Reference to GameplayManager for kill tracking
 	GameplayManager* m_gameplay_manager;

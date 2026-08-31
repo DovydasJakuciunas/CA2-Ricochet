@@ -24,12 +24,13 @@ struct AircraftRotator
         sf::Vector2f velocity = aircraft.GetVelocity();
         float speed = std::sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
 
-        if (speed > 0.f)
-        {
-            aircraft.rotate(sf::degrees(rotation));
-            aircraft.GetMovementController().AlignVelocityToRotation();
-            aircraft.GetMovementController().StoreVelocityAtRelease();
-        }
+        // Only allow rotation when aircraft is moving
+        if (speed <= 0.f)
+            return;
+
+        aircraft.rotate(sf::degrees(rotation));
+        aircraft.GetMovementController().AlignVelocityToRotation();
+        aircraft.GetMovementController().StoreVelocityAtRelease();
     }
 
     float rotation;
@@ -110,7 +111,6 @@ Player::Player()
     , m_key_binding(nullptr)
     , m_gameplay_manager(nullptr)
     , m_current_mission_status(MissionStatus::kMissionRunning)
-    , m_was_forward_pressed(false)
 {
     InitialiseActions();
 }
@@ -165,22 +165,6 @@ void Player::HandleRealTimeInput(CommandQueue& command_queue)
         std::vector<Action> activeActions = m_key_binding->GetRealtimeActions();
         for (Action action : activeActions)
             command_queue.Push(m_action_binding[action]);
-
-        // Check if forward key is currently pressed
-        bool isForwardPressed = sf::Keyboard::isKeyPressed(m_key_binding->GetAssignedKey(Action::kMoveUp));
-
-        if (m_was_forward_pressed && !isForwardPressed)
-        {
-            // Forward key was released - queue reset to initialize velocity baseline
-            command_queue.Push(m_action_binding[Action::kMoveUp]);  // Queue reset through ForwardMover
-        }
-        else if(!isForwardPressed)
-        {
-            AircraftDecelerator decelerator;
-        }
-
-        // Update state for next frame
-        m_was_forward_pressed = isForwardPressed;
     }
 }
 

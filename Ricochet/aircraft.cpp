@@ -46,6 +46,7 @@ Aircraft::Aircraft(AircraftType type, const TextureHolder& textures, const FontH
 	, m_explosion_began(false)
 	, m_player_id(player_id)
 	, m_collision_immunity_remaining(sf::Time::Zero)
+	, m_was_forward_pressed(false)
 	, m_weapon_system(std::make_unique<WeaponSystem>(this, textures))
 	, m_movement_controller(std::make_unique<MovementController>(this))
 	, m_key_binding(nullptr)
@@ -153,6 +154,28 @@ void Aircraft::UpdateCurrent(sf::Time dt, CommandQueue& commands)
 	if (m_collision_immunity_remaining > sf::Time::Zero)
 	{
 		m_collision_immunity_remaining -= dt;
+	}
+
+	// Apply deceleration if forward key is not pressed and this is the player's aircraft
+	if (m_key_binding && m_player_id == PlayerID::kPlayer1)
+	{
+		bool isForwardPressed = sf::Keyboard::isKeyPressed(m_key_binding->GetAssignedKey(Action::kMoveUp));
+
+		// Detect transition from pressed to released
+		if (m_was_forward_pressed && !isForwardPressed)
+		{
+			// Forward key was just released - store the current velocity as baseline for deceleration
+			m_movement_controller->ResetReleaseTime();
+			m_movement_controller->StoreVelocityAtRelease();
+		}
+
+		if (!isForwardPressed)
+		{
+			ApplyDeceleration(dt);
+		}
+
+		// Update state for next frame
+		m_was_forward_pressed = isForwardPressed;
 	}
 
 	Entity::UpdateCurrent(dt, commands);
@@ -280,4 +303,23 @@ const MovementController& Aircraft::GetMovementController() const
 void Aircraft::SetKeyBinding(const KeyBinding* binding)
 {
 	m_key_binding = binding;
+}
+
+void Aircraft::ApplyDeceleration(sf::Time dt)
+{
+	m_movement_controller->IncrementReleaseTime(dt);
+
+	float releaseTime = m_movement_controller->GetReleaseTime().asSeconds();
+
+	if (releaseTime >= 0.5f && releaseTime < 3.0f)
+	{
+		float decelerationProgress = (releaseTime - 0.5f) / 2.5f;
+		float decelerationFactor = 1.0f - decelerationProgress;
+		sf::Vector2f initialVelocity = m_movement_controller->GetVelocityAtRelease();
+		SetVelocity(initialVelocity.x * decelerationFactor, initialVelocity.y * decelerationFactor);
+	}
+	else if (releaseTime >= 3.0f)
+	{
+		SetVelocity(0.f, 0.f);
+	}
 }

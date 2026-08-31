@@ -53,6 +53,9 @@ public:
 	// Set key binding for animation updates
 	void SetKeyBinding(const KeyBinding* binding);
 
+	// Deceleration when forward key is released
+	void ApplyDeceleration(sf::Time dt);
+
 private:
 	virtual void DrawCurrent(sf::RenderTarget& target, sf::RenderStates states) const;
 	virtual void UpdateCurrent(sf::Time dt, CommandQueue& commands) override;
@@ -78,7 +81,9 @@ private:
 	// Player identification
 	PlayerID m_player_id;
 
-	// Collision immunity grace period
+	// Track forward key state for deceleration transition
+	bool m_was_forward_pressed;
+
 	sf::Time m_collision_immunity_remaining;
 
 	// Subsystems
