@@ -73,6 +73,8 @@ MultiplayerGameState::MultiplayerGameState(StateStack& stack, Context context, b
 	if (m_host)
 	{
 		m_game_server.reset(new GameServer(sf::Vector2f(m_window.getSize())));
+		std::cout << "[HOST] Server created and initialized" << std::endl;
+		std::cout << "[HOST] NOTE: Server will start listening in its background thread..." << std::endl;
 		ip = sf::IpAddress::LocalHost;
 	}
 	else
@@ -83,15 +85,18 @@ MultiplayerGameState::MultiplayerGameState(StateStack& stack, Context context, b
 	if (ip)
 	{
 		auto status = m_socket.connect(*ip, SERVER_PORT, sf::seconds(5.f));
+		std::cout << "[CLIENT] Attempting connection to " << ip->toString() << ":" << SERVER_PORT << " - Status: " << static_cast<int>(status) << std::endl;
 
 		if (status == sf::Socket::Status::Done)
 		{
 			m_connected = true;
+			std::cout << "[CLIENT] Connection SUCCESSFUL" << std::endl;
 			// Set non-blocking ONLY after a successful connection
 			m_socket.setBlocking(false);
 		}
 		else
 		{
+			std::cout << "[CLIENT] Connection FAILED - will return to menu after 5 seconds" << std::endl;
 			m_failed_connection_clock.restart();
 		}
 	}

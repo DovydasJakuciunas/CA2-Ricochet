@@ -74,12 +74,15 @@ void GameServer::SetListening(bool enable)
         if (!m_listening_state)
         {
             m_listening_state = (m_listener_socket.listen(SERVER_PORT) == sf::TcpListener::Status::Done);
+            std::cout << "[GAMESERVER] SetListening(true) - Listening on port " << SERVER_PORT 
+                      << " - State: " << (m_listening_state ? "SUCCESS" : "FAILED") << std::endl;
         }
     }
     else
     {
         m_listener_socket.close();
         m_listening_state = false;
+        std::cout << "[GAMESERVER] SetListening(false) - Listening stopped" << std::endl;
     }
 }
 
@@ -87,6 +90,8 @@ void GameServer::ExecutionThread()
 {
     try
     {
+        std::cout << "[GAMESERVER] ExecutionThread started" << std::endl;
+
         //Initialisation
         SetListening(true);
 
@@ -95,6 +100,8 @@ void GameServer::ExecutionThread()
         sf::Time tick_rate = sf::seconds(1.f / 20.f);
         sf::Time tick_time = sf::Time::Zero;
         sf::Clock frame_clock, tick_clock;
+
+        std::cout << "[GAMESERVER] Entering main game loop" << std::endl;
 
         while (!m_waiting_thread_end)
         {
