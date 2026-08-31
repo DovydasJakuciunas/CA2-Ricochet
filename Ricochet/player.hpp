@@ -42,6 +42,7 @@ public:
 	bool IsLocal() const;
 	void SetKeyBinding(const KeyBinding* binding);
 	const std::map<Action, bool>& GetActionProxies() const;
+	std::map<Action, bool> GetChangedActions();  // Returns only actions that changed since last frame
 
 private:
 	void InitialiseActions();
@@ -59,6 +60,7 @@ private:
 	const KeyBinding* m_key_binding;
 	std::map<Action, Command> m_action_binding;
 	std::map<Action, bool> m_action_proxies;
+	std::vector<Action> m_previous_realtime_actions;  // Track which actions were pressed last frame
 	uint8_t m_identifier;
 	sf::TcpSocket* m_socket;
 };

@@ -165,14 +165,88 @@ const std::map<Action, bool>& Player::GetActionProxies() const
     return m_action_proxies;
 }
 
+std::map<Action, bool> Player::GetChangedActions()
+{
+    std::map<Action, bool> changed_actions;
+
+    if (!m_key_binding || !IsLocal())
+    {
+        return changed_actions;
+    }
+
+    // Get current keyboard input
+    std::vector<Action> current_actions = m_key_binding->GetRealtimeActions();
+
+    // Check for actions that were pressed (in current but not in previous)
+    for (const auto& action : current_actions)
+    {
+        auto prev_it = std::find(m_previous_realtime_actions.begin(), 
+                                 m_previous_realtime_actions.end(), 
+                                 action);
+        if (prev_it == m_previous_realtime_actions.end())
+        {
+            // Action is new/pressed - send it as true
+            changed_actions[action] = true;
+            std::cout << "[PLAYER] GetChangedActions - Action PRESSED: " << static_cast<int>(action) << std::endl;
+        }
+    }
+
+    // Check for actions that were released (in previous but not in current)
+    for (const auto& action : m_previous_realtime_actions)
+    {
+        auto curr_it = std::find(current_actions.begin(), 
+                                 current_actions.end(), 
+                                 action);
+        if (curr_it == current_actions.end())
+        {
+            // Action is released - send it as false
+            changed_actions[action] = false;
+            std::cout << "[PLAYER] GetChangedActions - Action RELEASED: " << static_cast<int>(action) << std::endl;
+        }
+    }
+
+    // Store current state for next frame
+    m_previous_realtime_actions = current_actions;
+
+    // Debug: Show how many packets will be sent
+    if (!changed_actions.empty())
+    {
+        std::cout << "[PLAYER] GetChangedActions - Sending " << changed_actions.size() << " packet(s)" << std::endl;
+    }
+
+    return changed_actions;
+}
+
 void Player::HandleRealTimeInput(CommandQueue& command_queue)
 {
     // Use shared key binding for both single-player and multiplayer
     if (m_key_binding && IsLocal())
     {
+        // Get active keys from keyboard input
         std::vector<Action> activeActions = m_key_binding->GetRealtimeActions();
-        for (Action action : activeActions)
+
+        // Debug: Show current active actions
+        if (!activeActions.empty())
+        {
+            std::cout << "[PLAYER] HandleRealTimeInput - Active actions: ";
+            for (const auto& action : activeActions)
+            {
+                std::cout << static_cast<int>(action) << " ";
+            }
+            std::cout << std::endl;
+        }
+
+        // Update action proxies (for display/reference)
+        for (const auto& action : activeActions)
+        {
+            m_action_proxies[action] = true;
+        }
+
+        // Push commands to queue (for single-player or local visual feedback)
+        for (const auto& action : activeActions)
+        {
             command_queue.Push(m_action_binding[action]);
+        }
     }
 }
 

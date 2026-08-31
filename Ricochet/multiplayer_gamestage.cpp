@@ -219,10 +219,15 @@ bool MultiplayerGameState::Update(sf::Time dt)
 			uint8_t aircraft_identifier = pair.first;
 			Player* player = pair.second.get();
 
-			// Send all active/inactive actions for this aircraft
-			// GetActionProxies contains the current state of all actions
-			const auto& action_proxies = player->GetActionProxies();
-			for (const auto& action_pair : action_proxies)
+			// Only send actions that CHANGED since last frame (delta update)
+			// This dramatically reduces network traffic
+			const auto& changed_actions = player->GetChangedActions();
+			if (!changed_actions.empty())
+			{
+				std::cout << "[MULTIPLAYER] Sending " << changed_actions.size() << " input command(s) for aircraft " << static_cast<int>(aircraft_identifier) << std::endl;
+			}
+
+			for (const auto& action_pair : changed_actions)
 			{
 				sf::Packet input_packet;
 				input_packet << static_cast<uint8_t>(Client::PacketType::kInputCommand);
@@ -231,6 +236,9 @@ bool MultiplayerGameState::Update(sf::Time dt)
 				input_packet << action_pair.second;
 
 				m_socket.send(input_packet);
+				std::cout << "[MULTIPLAYER] Sent kInputCommand - Aircraft: " << static_cast<int>(aircraft_identifier) 
+						  << ", Action: " << static_cast<int>(action_pair.first) 
+						  << ", Enabled: " << (action_pair.second ? "true" : "false") << std::endl;
 			}
 		}
 		m_time_since_last_packet = sf::seconds(0.f);

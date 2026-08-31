@@ -334,6 +334,13 @@ void GameServer::HandleIncomingPackets(sf::Packet& packet, RemotePeer& receiving
         if (m_aircraft_info.find(aircraft_identifier) != m_aircraft_info.end())
         {
             m_aircraft_info[aircraft_identifier].m_real_time_actions[action_type] = action_enabled;
+            std::cout << "[GAMESERVER] Received kInputCommand - Aircraft: " << static_cast<int>(aircraft_identifier)
+                      << ", Action: " << static_cast<int>(action_type)
+                      << ", Enabled: " << (action_enabled ? "true" : "false") << std::endl;
+        }
+        else
+        {
+            std::cout << "[GAMESERVER] WARNING: Received kInputCommand for unknown aircraft: " << static_cast<int>(aircraft_identifier) << std::endl;
         }
     }
     break;
@@ -512,12 +519,16 @@ void GameServer::SimulateMovement(sf::Time dt)
     for (auto& pair : m_aircraft_info)
     {
         AircraftInfo& aircraft = pair.second;
+        uint8_t aircraft_id = pair.first;
+
+        bool is_moving = false;
 
         // Check if move left action is active
         if (aircraft.m_real_time_actions[static_cast<uint8_t>(Action::kMoveLeft)])
         {
             // Rotate left
             aircraft.m_rotation -= kRotationSpeed;
+            is_moving = true;
 
             // Align velocity to new rotation
             double radians = Utility::toRadians(aircraft.m_rotation + 90.f);
@@ -535,6 +546,7 @@ void GameServer::SimulateMovement(sf::Time dt)
         {
             // Rotate right
             aircraft.m_rotation += kRotationSpeed;
+            is_moving = true;
 
             // Align velocity to new rotation
             double radians = Utility::toRadians(aircraft.m_rotation + 90.f);
@@ -550,6 +562,7 @@ void GameServer::SimulateMovement(sf::Time dt)
         // Check if move up (forward) action is active
         if (aircraft.m_real_time_actions[static_cast<uint8_t>(Action::kMoveUp)])
         {
+            is_moving = true;
             // Accelerate forward in the direction of rotation
             double radians = Utility::toRadians(aircraft.m_rotation + 90.f);
             float dirX = -std::cos(radians);
@@ -608,6 +621,15 @@ void GameServer::SimulateMovement(sf::Time dt)
         {
             aircraft.m_position.y = m_battlefield_rect.position.y + m_battlefield_rect.size.y;
             aircraft.m_velocity.y = 0.f;  // Stop vertical movement
+        }
+
+        // Debug: show aircraft movement
+        if (is_moving)
+        {
+            std::cout << "[GAMESERVER] Aircraft " << static_cast<int>(aircraft_id) 
+                      << " moved to (" << aircraft.m_position.x << ", " << aircraft.m_position.y 
+                      << ") vel=(" << aircraft.m_velocity.x << ", " << aircraft.m_velocity.y 
+                      << ") rot=" << aircraft.m_rotation << std::endl;
         }
     }
 }
