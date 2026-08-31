@@ -47,6 +47,7 @@ void PhysicsSimulator::BounceAircraftOffWall(Aircraft* aircraft)
 	sf::Vector2f velocity = aircraft->GetVelocity();
 	sf::FloatRect aircraft_bounds = aircraft->GetBoundingRect();
 
+
 	bool bounced = false;
 
 	// Check left boundary
@@ -132,6 +133,7 @@ void PhysicsSimulator::BounceAircraftOffWall(Aircraft* aircraft)
 		aircraft->setPosition(position);
 		aircraft->SetCollisionImmunity(kWallBounceGracePeriod);
 	}
+
 }
 
 void PhysicsSimulator::BounceProjectiles(CommandQueue& command_queue)

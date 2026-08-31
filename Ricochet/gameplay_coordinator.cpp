@@ -11,6 +11,7 @@
 #include "pickup.hpp"
 #include "scene_layers.hpp"
 #include <random>
+#include <iostream>
 
 GameplayCoordinator::GameplayCoordinator(const std::vector<Aircraft*>& players, SceneNode& scene_graph,
 	SceneNode* upper_air_layer, const sf::FloatRect& world_bounds, const sf::View& camera,
@@ -37,6 +38,7 @@ GameplayCoordinator::GameplayCoordinator(const std::vector<Aircraft*>& players, 
 
 void GameplayCoordinator::Update(sf::Time dt)
 {
+
 	// Use collision handler to process all collisions
 	if (m_collision_handler)
 	{
@@ -55,6 +57,7 @@ void GameplayCoordinator::Update(sf::Time dt)
 		m_physics_simulator->BounceProjectiles(m_command_queue);
 		m_physics_simulator->HandlePlayerBoundaryCollision(m_players);
 	}
+
 }
 
 void GameplayCoordinator::RespawnDeadPlayers(const std::vector<sf::Vector2f>& spawn_positions)

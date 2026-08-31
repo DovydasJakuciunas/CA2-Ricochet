@@ -489,7 +489,6 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 		packet >> aircraft_count;
 
 
-
 		for (uint8_t i = 0; i < aircraft_count; ++i)
 		{
 			sf::Vector2f aircraft_position;
@@ -500,6 +499,7 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 
 			Aircraft* aircraft = m_world.GetAircraft(aircraft_identifier);
 			bool is_local_plane = std::find(m_local_player_identifiers.begin(), m_local_player_identifiers.end(), aircraft_identifier) != m_local_player_identifiers.end();
+
 
 			if (aircraft && !is_local_plane)
 			{

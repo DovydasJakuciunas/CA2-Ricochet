@@ -48,6 +48,9 @@ private:
 	// Spawn point management
 	void GenerateSpawnPoints();
 	sf::Vector2f GetNextSpawnPoint();
+
+	// Initialize GameplayCoordinator on first aircraft spawn
+	void InitializeGameplayCoordinator();
 	
 
 

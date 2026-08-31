@@ -2,6 +2,7 @@
 #include "sprite_node.hpp"
 #include <vector>
 #include <algorithm>
+#include <iostream>
 #include "pickup.hpp"
 #include "particle_node.hpp"
 #include "particletype.hpp"
@@ -27,6 +28,7 @@ World::World(sf::RenderTarget& output_target, FontHolder& font, SoundPlayer& sou
 	, m_collision_handler(nullptr)
 	, m_gameplay_manager(nullptr)
 	, m_physics_simulator(nullptr)
+	, m_gameplay_coordinator(nullptr)
 	, m_network_node(nullptr)
 	, m_next_spawn_point_index(0)
 {
@@ -37,18 +39,7 @@ World::World(sf::RenderTarget& output_target, FontHolder& font, SoundPlayer& sou
 	BuildScene();
 	SetupNetworkNode();
 
-	// Initialize GameplayCoordinator after scene is built with empty players list
-	// The list will be populated as aircraft are added via AddAircraft()
-	m_gameplay_coordinator = std::make_unique<GameplayCoordinator>(
-		m_players_list,
-		m_scene_graph,
-		m_scene_layers[static_cast<int>(SceneLayers::kUpperAir)],
-		m_world_bounds,
-		m_camera,
-		m_command_queue,
-		m_textures,
-		m_sounds
-	);
+	// GameplayCoordinator will be initialized on first aircraft spawn via InitializeGameplayCoordinator()
 }
 
 void World::Update(sf::Time dt)
@@ -243,6 +234,12 @@ Aircraft* World::AddAircraft(uint8_t aircraft_id, PlayerID player_id)
 	// Add to players list for collision handling
 	m_players_list.push_back(aircraft_ptr);
 
+	// Initialize GameplayCoordinator on first aircraft spawn
+	if (!m_gameplay_coordinator)
+	{
+		InitializeGameplayCoordinator();
+	}
+
 	// Add to scene graph
 	m_scene_layers[static_cast<int>(SceneLayers::kUpperAir)]->AttachChild(std::move(aircraft));
 
@@ -313,4 +310,22 @@ sf::Vector2f World::GetNextSpawnPoint()
 	m_next_spawn_point_index = (m_next_spawn_point_index + 1) % m_spawn_points.size();
 
 	return spawn_pos;
+}
+
+void World::InitializeGameplayCoordinator()
+{
+	if (!m_gameplay_coordinator)
+	{
+		std::cout << "[WORLD] Initializing GameplayCoordinator with " << m_players_list.size() << " players" << std::endl;
+		m_gameplay_coordinator = std::make_unique<GameplayCoordinator>(
+			m_players_list,
+			m_scene_graph,
+			m_scene_layers[static_cast<int>(SceneLayers::kUpperAir)],
+			m_world_bounds,
+			m_camera,
+			m_command_queue,
+			m_textures,
+			m_sounds
+		);
+	}
 }
