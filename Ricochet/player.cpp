@@ -192,17 +192,6 @@ void Player::HandleRealTimeInput(CommandQueue& command_queue)
         if (currentFirePressed && !m_fire_state)
         {
             command_queue.Push(m_action_binding[Action::kBulletFire]);
-
-            // Send fire press packet to server
-            if (m_socket)
-            {
-                sf::Packet packet;
-                packet << static_cast<uint8_t>(Client::PacketType::kPlayerRealtimeChange);
-                packet << m_aircraft_identifier;
-                packet << static_cast<uint8_t>(Action::kBulletFire);
-                packet << true;  // Fire button pressed
-                m_socket->send(packet);
-            }
         }
         m_fire_state = currentFirePressed;
 
@@ -210,21 +199,32 @@ void Player::HandleRealTimeInput(CommandQueue& command_queue)
         if (currentMissilePressed && !m_missile_state)
         {
             command_queue.Push(m_action_binding[Action::kMissileFire]);
-
-            // Send missile press packet to server
-            if (m_socket)
-            {
-                sf::Packet packet;
-                packet << static_cast<uint8_t>(Client::PacketType::kPlayerRealtimeChange);
-                packet << m_aircraft_identifier;
-                packet << static_cast<uint8_t>(Action::kMissileFire);
-                packet << true;  // Missile button pressed
-                m_socket->send(packet);
-            }
         }
         m_missile_state = currentMissilePressed;
+
+        // Send InputCommand packet only when input state changes
+        if (m_socket)
+        {
+            uint8_t currentFlags = GetCurrentInputFlags();
+
+            // Only send packet if flags changed from previous frame
+            if (currentFlags != m_previous_input_flags)
+            {
+                sf::Packet packet;
+                packet << static_cast<uint8_t>(Client::PacketType::kInputCommand);
+                packet << m_aircraft_identifier;
+                packet << m_input_sequence;
+                packet << currentFlags;
+                m_socket->send(packet);
+
+                // Increment sequence number only on state change
+                ++m_input_sequence;
+                m_previous_input_flags = currentFlags;
+            }
+        }
     }
 }
+
 
 void Player::HandleRealtimeNetworkInput(CommandQueue& commands)
 {
@@ -362,3 +362,46 @@ void Player::HandleNetworkRealtimeChange(Action action, bool actionEnabled)
 {
     m_action_proxies[action] = actionEnabled;
 }
+
+uint8_t Player::ActionToInputFlag(Action action) const
+{
+    switch (action)
+    {
+    case Action::kMoveLeft:
+        return (1 << static_cast<uint8_t>(InputCommand::InputFlag::kMoveLeft));
+    case Action::kMoveRight:
+        return (1 << static_cast<uint8_t>(InputCommand::InputFlag::kMoveRight));
+    case Action::kMoveUp:
+        return (1 << static_cast<uint8_t>(InputCommand::InputFlag::kMoveUp));
+    case Action::kBulletFire:
+        return (1 << static_cast<uint8_t>(InputCommand::InputFlag::kBulletFire));
+    case Action::kMissileFire:
+        return (1 << static_cast<uint8_t>(InputCommand::InputFlag::kMissileFire));
+    default:
+        return 0;
+    }
+}
+
+uint8_t Player::GetCurrentInputFlags() const
+{
+    uint8_t flags = 0;
+    if (m_key_binding)
+    {
+        std::vector<Action> activeActions = m_key_binding->GetRealtimeActions();
+        for (Action action : activeActions)
+        {
+            // Only encode movement actions in the flags, not fire/missile
+            if (action != Action::kBulletFire && action != Action::kMissileFire)
+            {
+                flags |= ActionToInputFlag(action);
+            }
+        }
+        // Encode fire and missile states
+        if (m_fire_state)
+            flags |= ActionToInputFlag(Action::kBulletFire);
+        if (m_missile_state)
+            flags |= ActionToInputFlag(Action::kMissileFire);
+    }
+    return flags;
+}
+

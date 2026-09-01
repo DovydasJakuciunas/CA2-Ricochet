@@ -2,6 +2,7 @@
 #include "network_protocol.hpp"
 #include "aircraft_type.hpp"
 #include "pickup_type.hpp"
+#include "action.hpp"
 #include "utility.hpp"
 #include "physics_simulator.hpp"
 #include <SFML/Network/Packet.hpp>
@@ -306,6 +307,46 @@ void GameServer::HandleIncomingPackets(sf::Packet& packet, RemotePeer& receiving
         bool action_enabled;
         packet >> aircraft_identifier >> action >> action_enabled;
         NotifyPlayerRealtimeChange(aircraft_identifier, action, action_enabled);
+    }
+    break;
+
+    case Client::PacketType::kInputCommand:
+    {
+        uint8_t aircraft_identifier;
+        uint8_t input_sequence;
+        uint8_t input_flags;
+        packet >> aircraft_identifier >> input_sequence >> input_flags;
+
+        // Decode bitfield flags and call NotifyPlayerRealtimeChange for each active action
+        // Bit 0 = MoveLeft
+        if (input_flags & (1 << static_cast<uint8_t>(InputCommand::InputFlag::kMoveLeft)))
+            NotifyPlayerRealtimeChange(aircraft_identifier, static_cast<uint8_t>(Action::kMoveLeft), true);
+        else
+            NotifyPlayerRealtimeChange(aircraft_identifier, static_cast<uint8_t>(Action::kMoveLeft), false);
+
+        // Bit 1 = MoveRight
+        if (input_flags & (1 << static_cast<uint8_t>(InputCommand::InputFlag::kMoveRight)))
+            NotifyPlayerRealtimeChange(aircraft_identifier, static_cast<uint8_t>(Action::kMoveRight), true);
+        else
+            NotifyPlayerRealtimeChange(aircraft_identifier, static_cast<uint8_t>(Action::kMoveRight), false);
+
+        // Bit 2 = MoveUp
+        if (input_flags & (1 << static_cast<uint8_t>(InputCommand::InputFlag::kMoveUp)))
+            NotifyPlayerRealtimeChange(aircraft_identifier, static_cast<uint8_t>(Action::kMoveUp), true);
+        else
+            NotifyPlayerRealtimeChange(aircraft_identifier, static_cast<uint8_t>(Action::kMoveUp), false);
+
+        // Bit 3 = BulletFire
+        if (input_flags & (1 << static_cast<uint8_t>(InputCommand::InputFlag::kBulletFire)))
+            NotifyPlayerRealtimeChange(aircraft_identifier, static_cast<uint8_t>(Action::kBulletFire), true);
+        else
+            NotifyPlayerRealtimeChange(aircraft_identifier, static_cast<uint8_t>(Action::kBulletFire), false);
+
+        // Bit 4 = MissileFire
+        if (input_flags & (1 << static_cast<uint8_t>(InputCommand::InputFlag::kMissileFire)))
+            NotifyPlayerRealtimeChange(aircraft_identifier, static_cast<uint8_t>(Action::kMissileFire), true);
+        else
+            NotifyPlayerRealtimeChange(aircraft_identifier, static_cast<uint8_t>(Action::kMissileFire), false);
     }
     break;
 

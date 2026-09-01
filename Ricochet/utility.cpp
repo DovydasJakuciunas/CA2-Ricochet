@@ -30,14 +30,14 @@ sf::Vector2f Utility::Normalise(const sf::Vector2f& source)
 void Utility::CentreOrigin(sf::Sprite& sprite)
 {
     sf::FloatRect bounds = sprite.getLocalBounds();
-    sprite.setOrigin(sf::Vector2f(std::floor(bounds.position.x + bounds.size.x / 2.f), std::floor(bounds.position.y + bounds.size.y / 2.f)));
-}
+        sprite.setOrigin(sf::Vector2f(std::floor(bounds.position.x + bounds.size.x / 2.f), std::floor(bounds.position.y + bounds.size.y / 2.f)));
+    }
 
 void Utility::CentreOrigin(sf::Text& text)
 {
     sf::FloatRect bounds = text.getLocalBounds();
-    text.setOrigin(sf::Vector2f(std::floor(bounds.position.x + bounds.size.x / 2.f), std::floor(bounds.position.y + bounds.size.y / 2.f)));
-}
+        text.setOrigin(sf::Vector2f(std::floor(bounds.position.x + bounds.size.x / 2.f), std::floor(bounds.position.y + bounds.size.y / 2.f)));
+    }
 
 void Utility::CentreOrigin(Animation& animation)
 {

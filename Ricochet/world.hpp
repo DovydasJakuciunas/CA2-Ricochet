@@ -1,5 +1,6 @@
 #pragma once
 #include <SFML/Graphics.hpp>
+#include <functional>
 #include "resource_identifiers.hpp"
 #include "scene_node.hpp"
 #include "scene_layers.hpp"
@@ -9,7 +10,6 @@
 #include "sound_player.hpp"
 #include "sprite_node.hpp"
 #include "text_node.hpp"
-#include "utility.hpp"
 #include "collision_handler.hpp"
 #include "gameplay_manager.hpp"
 #include "physics_simulator.hpp"
@@ -41,6 +41,11 @@ public:
 	GameplayManager* GetGameplayManager();
 
 	bool PollGameAction(GameActions::Action& out);
+
+	// Network pickup spawning
+	void SetIsHost(bool is_host);
+	void SpawnPickupFromNetwork(int pickup_type, sf::Vector2f position);
+	void SetPickupBroadcasterCallback(std::function<void(int, sf::Vector2f)> callback);  // Callback to send pickup spawns to clients
 
 private:
 	void LoadTextures();
@@ -75,6 +80,8 @@ private:
 	BloomEffect m_bloom_effect;
 	SpriteNode* m_background_sprite;
 	sf::Time m_pickup_spawn_timer;
+	bool m_is_host;  // Track if this World instance is running on the host
+	std::function<void(int, sf::Vector2f)> m_pickup_broadcaster;  // Callback to broadcast pickups to clients
 
 	// Subsystems
 	std::unique_ptr<CollisionHandler> m_collision_handler;

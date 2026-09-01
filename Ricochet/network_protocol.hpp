@@ -24,6 +24,7 @@ namespace Client
 	{
 		kPlayerEvent, // Two sf::Int32, aircraft identifer and event. It is used to request the server to trigger an event on the aircraft
 		kPlayerRealtimeChange, // The same kPlayerEvent, additionally takes a boolean for real time action
+		kInputCommand, // New: Aircraft identifier, input sequence, and input flags (bitfield)
 		kStateUpdate, //sf::Int32 with number of local aircraft, for each aircraft send sf::Int32 identifier, two floats for position, health and ammo
 		kHeartbeat, // Lightweight keepalive packet to prevent client timeout; no payload
 		kGameEvent, //This is for explosions
@@ -48,5 +49,25 @@ namespace GameActions
 
 		Type type;
 		sf::Vector2f position;
+	};
+}
+
+namespace InputCommand
+{
+	// Bit positions for input flags
+	enum class InputFlag : uint8_t
+	{
+		kMoveLeft = 0,
+		kMoveRight = 1,
+		kMoveUp = 2,
+		kBulletFire = 3,
+		kMissileFire = 4
+	};
+
+	struct Command
+	{
+		uint8_t aircraft_identifier;
+		uint8_t input_sequence;
+		uint8_t input_flags;
 	};
 }

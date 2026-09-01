@@ -53,6 +53,24 @@ void World::Update(sf::Time dt)
 	// Update scene graph first to move all entities based on their velocity
 	m_scene_graph.Update(dt, m_command_queue);
 
+	// Remove dead aircraft from the players list BEFORE RemoveWrecks() to prevent dangling pointers
+	m_players_list.erase(
+		std::remove_if(m_players_list.begin(), m_players_list.end(),
+			[](Aircraft* aircraft) { return !aircraft || aircraft->IsMarkedForRemoval(); }),
+		m_players_list.end()
+	);
+
+	// Check if players died and respawn them (BEFORE RemoveWrecks to ensure pointers are still valid)
+	for (auto& pair : m_networked_aircraft)
+	{
+		Aircraft* player = pair.second;
+		if (player && player->IsMarkedForRemoval())
+		{
+			player->Respawn();
+			player->setPosition(GetNextSpawnPoint());
+		}
+	}
+
 	m_scene_graph.RemoveWrecks();
 
 	// Use GameplayCoordinator for all gameplay updates (collision handling, physics, etc.)
@@ -62,14 +80,16 @@ void World::Update(sf::Time dt)
 		m_gameplay_coordinator->Update(dt);
 	}
 
-	// Check if players died and respawn them
-	for (auto& pair : m_networked_aircraft)
+	// Clean up dead aircraft from networked_aircraft map AFTER respawn loop to prevent dangling pointers
+	for (auto itr = m_networked_aircraft.begin(); itr != m_networked_aircraft.end();)
 	{
-		Aircraft* player = pair.second;
-		if (player && player->IsMarkedForRemoval())
+		if (!itr->second || itr->second->IsMarkedForRemoval())
 		{
-			player->Respawn();
-			player->setPosition(GetNextSpawnPoint());
+			itr = m_networked_aircraft.erase(itr);
+		}
+		else
+		{
+			++itr;
 		}
 	}
 

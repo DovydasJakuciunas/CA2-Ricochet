@@ -19,11 +19,6 @@ void Animation::SetTexture(const sf::Texture& texture)
     m_sprite.setTexture(texture);
 }
 
-const sf::Texture Animation::GetTexture() const
-{
-    return m_sprite.getTexture();
-}
-
 void Animation::SetFrameSize(sf::Vector2i frame_size)
 {
     m_frame_size = frame_size;

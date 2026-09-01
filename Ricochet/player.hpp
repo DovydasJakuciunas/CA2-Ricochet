@@ -45,6 +45,8 @@ public:
 private:
 	void InitialiseActions();
 	static bool IsRealTimeAction(Action action);
+	uint8_t ActionToInputFlag(Action action) const;
+	uint8_t GetCurrentInputFlags() const;
 
 private:
 	MissionStatus m_current_mission_status;
@@ -61,6 +63,8 @@ private:
 	bool m_missile_state = false;  // Track whether missile button is currently held
 	uint8_t m_identifier;  // Player ID (0-based)
 	uint8_t m_aircraft_identifier;  // Aircraft ID (1-based), used for network synchronization
+	uint8_t m_input_sequence = 0;  // Sequence number for input commands, increments with each state change
+	uint8_t m_previous_input_flags = 0;  // Previous frame's flags to detect state changes
 	sf::TcpSocket* m_socket;
 };
 
