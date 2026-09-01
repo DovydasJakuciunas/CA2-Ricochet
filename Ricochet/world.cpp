@@ -81,7 +81,6 @@ void World::Update(sf::Time dt)
 	m_scene_graph.RemoveWrecks();
 
 	// Use GameplayCoordinator for all gameplay updates (collision handling, physics, etc.)
-	// Applied AFTER scene graph update to ensure bounces are applied after movement
 	if (m_gameplay_coordinator)
 	{
 		m_gameplay_coordinator->Update(dt);
@@ -202,7 +201,6 @@ void World::UpdateSounds()
 void World::SpawnRandomPickups(sf::Time dt)
 {
 	// Only the host should spawn random pickups in multiplayer
-	// Clients will receive pickups from the server via network packets
 	if (!m_is_host)
 		return;
 
@@ -320,7 +318,6 @@ Aircraft* World::AddAircraft(uint8_t aircraft_id, PlayerID player_id)
 	TextNode* kill_display_ptr = kill_display.get();
 
 	// Position the kill display vertically along the left side of the screen
-	// Account for box height (approx 70px: 42 char size + 20 padding + 4 outline + spacing)
 	const float box_height = 70.f;
 	const float screen_top = 7.5f;
 	const float screen_bottom = 768.f - box_height;  // Account for entire box height
@@ -352,7 +349,6 @@ Aircraft* World::AddAircraft(uint8_t aircraft_id, PlayerID player_id)
 	m_scene_layers[static_cast<int>(SceneLayers::kGUI)]->AttachChild(std::move(kill_display));
 
 	// Register the kill display with GameplayManager via GameplayCoordinator
-	// Note: aircraft_id starts at 1, but GameplayManager expects 0-based player IDs
 	if (m_gameplay_coordinator)
 	{
 		uint8_t player_index = aircraft_id - 1;  // Convert 1-based aircraft_id to 0-based player index
