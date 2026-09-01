@@ -156,32 +156,77 @@ void Aircraft::UpdateCurrent(sf::Time dt, CommandQueue& commands)
 		m_collision_immunity_remaining -= dt;
 	}
 
-	// Handle network snapshot-based interpolation for remote aircraft
-	UpdateNetworkInterpolation(dt);
-
-	// Apply deceleration if forward key is not pressed and this is the player's aircraft
-	if (m_key_binding)
+	if (m_is_locally_controlled)
 	{
-		bool isForwardPressed = sf::Keyboard::isKeyPressed(m_key_binding->GetAssignedKey(Action::kMoveUp));
-
-		// Detect transition from pressed to released
-		if (m_was_forward_pressed && !isForwardPressed)
+		// --- CLIENT-SIDE PREDICTION ---
+		// The local player's input has already set this aircraft's velocity via
+		// the movement commands pushed by Player::HandleRealTimeInput. We simulate
+		// it locally for immediate responsiveness; Entity::UpdateCurrent below
+		// integrates the predicted velocity. Deceleration is part of the model.
+		if (m_key_binding)
 		{
-			// Forward key was just released - store the current velocity as baseline for deceleration
-			m_movement_controller->ResetReleaseTime();
-			m_movement_controller->StoreVelocityAtRelease();
-		}
+			bool isForwardPressed = sf::Keyboard::isKeyPressed(m_key_binding->GetAssignedKey(Action::kMoveUp));
 
-		if (!isForwardPressed)
-		{
-			ApplyDeceleration(dt);
-		}
+			// Detect transition from pressed to released
+			if (m_was_forward_pressed && !isForwardPressed)
+			{
+				// Forward key was just released - reset the forward hold timer so the
+				// boost only engages after holding forward continuously, and store the
+				// current velocity as baseline for deceleration
+				m_movement_controller->ResetForwardTime();
+				m_movement_controller->ResetReleaseTime();
+				m_movement_controller->StoreVelocityAtRelease();
+			}
 
-		// Update state for next frame
-		m_was_forward_pressed = isForwardPressed;
+			if (!isForwardPressed)
+			{
+				ApplyDeceleration(dt);
+			}
+
+			// Update state for next frame
+			m_was_forward_pressed = isForwardPressed;
+		}
+	}
+	else
+	{
+		// Remote aircraft follow authoritative server snapshots via interpolation
+		UpdateNetworkInterpolation(dt);
 	}
 
 	Entity::UpdateCurrent(dt, commands);
+
+	// --- RECONCILIATION ---
+	// After predicting locally, gently correct the local aircraft toward the
+	// authoritative server state. Small errors are smoothed out over time to
+	// avoid rubber-banding; large divergences are snapped immediately.
+	if (m_is_locally_controlled && m_has_server_correction)
+	{
+		sf::Vector2f current = getPosition();
+		sf::Vector2f error = m_server_position - current;
+		float distance = std::sqrt(error.x * error.x + error.y * error.y);
+
+		const float kSnapThreshold = 150.f;   // large divergence -> snap
+		const float kCorrectionRate = 12.f;   // blend speed (fraction/sec)
+
+		if (distance > kSnapThreshold)
+		{
+			setPosition(m_server_position);
+			setRotation(sf::degrees(m_server_rotation));
+		}
+		else if (distance > 0.01f)
+		{
+			float t = std::min(1.f, kCorrectionRate * dt.asSeconds());
+			setPosition(current + error * t);
+
+			// Blend rotation along the shortest angular path
+			float cur_rot = getRotation().asDegrees();
+			float delta = m_server_rotation - cur_rot;
+			while (delta > 180.f) delta -= 360.f;
+			while (delta < -180.f) delta += 360.f;
+			setRotation(sf::degrees(cur_rot + delta * t));
+		}
+	}
+
 	UpdateTexts();
 
 	UpdateRollAnimation();
@@ -306,6 +351,23 @@ const MovementController& Aircraft::GetMovementController() const
 void Aircraft::SetKeyBinding(const KeyBinding* binding)
 {
 	m_key_binding = binding;
+}
+
+void Aircraft::SetLocallyControlled(bool locally_controlled)
+{
+	m_is_locally_controlled = locally_controlled;
+}
+
+bool Aircraft::IsLocallyControlled() const
+{
+	return m_is_locally_controlled;
+}
+
+void Aircraft::ApplyServerCorrection(sf::Vector2f position, float rotation)
+{
+	m_server_position = position;
+	m_server_rotation = rotation;
+	m_has_server_correction = true;
 }
 
 void Aircraft::ApplyDeceleration(sf::Time dt)

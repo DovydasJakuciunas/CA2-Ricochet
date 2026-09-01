@@ -4,11 +4,12 @@
 #include "pickup_type.hpp"
 #include "action.hpp"
 #include "utility.hpp"
-#include "physics_simulator.hpp"
+#include "constants.hpp"
 #include <SFML/Network/Packet.hpp>
 #include <SFML/System/Sleep.hpp>
 #include <iostream>
 #include <cmath>
+#include <algorithm>
 
 GameServer::GameServer(sf::Vector2f battlefield_size)
     : m_listening_state(false)
@@ -65,6 +66,13 @@ void GameServer::NotifyPlayerSpawn(uint8_t aircraft_identifier)
 
 void GameServer::NotifyPlayerRealtimeChange(uint8_t aircraft_identifier, uint8_t action, bool action_enabled)
 {
+    // Store the input state so the server can authoritatively simulate movement
+    auto found = m_aircraft_info.find(aircraft_identifier);
+    if (found != m_aircraft_info.end())
+    {
+        found->second.m_real_time_actions[action] = action_enabled;
+    }
+
     sf::Packet packet;
     //First thing in every is what type of packet it is
     packet << static_cast<uint8_t>(Server::PacketType::kPlayerRealtimeChange);
@@ -218,35 +226,151 @@ void GameServer::ExecutionThread()
 
 void GameServer::SimulateMovement(sf::Time dt)
 {
-    // Apply server-side physics: bounce aircraft off walls
-    if (m_physics_simulator)
+    const float dt_seconds = dt.asSeconds();
+
+    // Movement constants mirror the client model (see constants.hpp / data_tables.cpp)
+    const float kAircraftMaxSpeed = 225.f;   // Eagle speed
+    const float kMinSpeedThreshold = 0.1f;
+    const float kAircraftHalfSize = 20.f;    // approximate 40x40 aircraft
+
+    const float left_bound = m_battlefield_rect.position.x;
+    const float right_bound = m_battlefield_rect.position.x + m_battlefield_rect.size.x;
+    const float top_bound = m_battlefield_rect.position.y;
+    const float bottom_bound = m_battlefield_rect.position.y + m_battlefield_rect.size.y;
+
+    for (auto& aircraft_pair : m_aircraft_info)
     {
-        for (auto& aircraft_pair : m_aircraft_info)
+        AircraftInfo& info = aircraft_pair.second;
+
+        const bool left = info.m_real_time_actions[static_cast<uint8_t>(Action::kMoveLeft)];
+        const bool right = info.m_real_time_actions[static_cast<uint8_t>(Action::kMoveRight)];
+        const bool up = info.m_real_time_actions[static_cast<uint8_t>(Action::kMoveUp)];
+
+        // --- Rotation (only allowed while the aircraft is moving) ---
+        float speed = std::sqrt(info.m_velocity.x * info.m_velocity.x + info.m_velocity.y * info.m_velocity.y);
+        if (speed > 0.f)
         {
-            AircraftInfo& info = aircraft_pair.second;
-            sf::FloatRect aircraft_bounds(info.m_position, sf::Vector2f(40.f, 40.f));  // Approximate aircraft size
-
-            // Check left boundary
-            if (aircraft_bounds.position.x <= m_battlefield_rect.position.x)
+            if (left)
             {
-                info.m_position.x = m_battlefield_rect.position.x + (aircraft_bounds.size.x / 2.f);
+                info.m_rotation -= kRotationSpeed;
             }
-            // Check right boundary
-            else if (aircraft_bounds.position.x + aircraft_bounds.size.x >= m_battlefield_rect.position.x + m_battlefield_rect.size.x)
+            if (right)
             {
-                info.m_position.x = m_battlefield_rect.position.x + m_battlefield_rect.size.x - (aircraft_bounds.size.x / 2.f);
+                info.m_rotation += kRotationSpeed;
             }
 
-            // Check top boundary
-            if (aircraft_bounds.position.y <= m_battlefield_rect.position.y)
+            if (left || right)
             {
-                info.m_position.y = m_battlefield_rect.position.y + (aircraft_bounds.size.y / 2.f);
+                // Normalize rotation into [0, 360)
+                while (info.m_rotation < 0.f) info.m_rotation += 360.f;
+                while (info.m_rotation >= 360.f) info.m_rotation -= 360.f;
+
+                // Align velocity to the new heading, preserving speed magnitude
+                if (speed >= kMinSpeedThreshold)
+                {
+                    double radians = Utility::toRadians(info.m_rotation + 90.f);
+                    float dirX = -static_cast<float>(std::cos(radians));
+                    float dirY = -static_cast<float>(std::sin(radians));
+                    info.m_velocity = sf::Vector2f(dirX * speed, dirY * speed);
+
+                    // Keep the deceleration baseline aligned to the new heading so
+                    // that a coasting aircraft continues to travel along its nose
+                    // after turning, instead of drifting in the stale release
+                    // direction captured when forward was last released.
+                    float releaseSpeed = std::sqrt(
+                        info.m_velocity_at_release.x * info.m_velocity_at_release.x +
+                        info.m_velocity_at_release.y * info.m_velocity_at_release.y);
+                    if (releaseSpeed >= kMinSpeedThreshold)
+                    {
+                        info.m_velocity_at_release = sf::Vector2f(dirX * releaseSpeed, dirY * releaseSpeed);
+                    }
+                }
             }
-            // Check bottom boundary
-            else if (aircraft_bounds.position.y + aircraft_bounds.size.y >= m_battlefield_rect.position.y + m_battlefield_rect.size.y)
+        }
+
+        // --- Forward acceleration / deceleration ---
+        if (up)
+        {
+            double radians = Utility::toRadians(info.m_rotation + 90.f);
+            float dirX = -static_cast<float>(std::cos(radians));
+            float dirY = -static_cast<float>(std::sin(radians));
+
+            float currentSpeed = std::sqrt(info.m_velocity.x * info.m_velocity.x + info.m_velocity.y * info.m_velocity.y);
+
+            info.m_forward_time += dt;
+            float holdTime = info.m_forward_time.asSeconds();
+
+            float acceleration = accelerationRate * dt_seconds;
+            if (holdTime > boostThreshold)
             {
-                info.m_position.y = m_battlefield_rect.position.y + m_battlefield_rect.size.y - (aircraft_bounds.size.y / 2.f);
+                acceleration = boostedAccelerationRate * dt_seconds;
             }
+
+            if (currentSpeed < kAircraftMaxSpeed)
+            {
+                float newSpeed = std::min(currentSpeed + acceleration, kAircraftMaxSpeed);
+                info.m_velocity = sf::Vector2f(newSpeed * dirX, newSpeed * dirY);
+            }
+            else
+            {
+                info.m_velocity = sf::Vector2f(kAircraftMaxSpeed * dirX, kAircraftMaxSpeed * dirY);
+            }
+
+            info.m_was_forward_pressed = true;
+        }
+        else
+        {
+            // Detect the transition from pressed to released to capture the deceleration baseline
+            if (info.m_was_forward_pressed)
+            {
+                info.m_forward_time = sf::Time::Zero;
+                info.m_release_time = sf::Time::Zero;
+                info.m_velocity_at_release = info.m_velocity;
+            }
+
+            info.m_release_time += dt;
+            float releaseTime = info.m_release_time.asSeconds();
+
+            if (releaseTime >= 0.5f && releaseTime < 3.0f)
+            {
+                float decelerationProgress = (releaseTime - 0.5f) / 2.5f;
+                float decelerationFactor = 1.0f - decelerationProgress;
+                info.m_velocity = sf::Vector2f(
+                    info.m_velocity_at_release.x * decelerationFactor,
+                    info.m_velocity_at_release.y * decelerationFactor);
+            }
+            else if (releaseTime >= 3.0f)
+            {
+                info.m_velocity = sf::Vector2f(0.f, 0.f);
+            }
+
+            info.m_was_forward_pressed = false;
+        }
+
+        // --- Integrate position from velocity ---
+        info.m_position += info.m_velocity * dt_seconds;
+
+        // --- Wall bounce: clamp inside battlefield and invert velocity component ---
+        if (info.m_position.x - kAircraftHalfSize <= left_bound)
+        {
+            info.m_position.x = left_bound + kAircraftHalfSize;
+            info.m_velocity.x = -info.m_velocity.x;
+        }
+        else if (info.m_position.x + kAircraftHalfSize >= right_bound)
+        {
+            info.m_position.x = right_bound - kAircraftHalfSize;
+            info.m_velocity.x = -info.m_velocity.x;
+        }
+
+        if (info.m_position.y - kAircraftHalfSize <= top_bound)
+        {
+            info.m_position.y = top_bound + kAircraftHalfSize;
+            info.m_velocity.y = -info.m_velocity.y;
+        }
+        else if (info.m_position.y + kAircraftHalfSize >= bottom_bound)
+        {
+            info.m_position.y = bottom_bound - kAircraftHalfSize;
+            info.m_velocity.y = -info.m_velocity.y;
         }
     }
 }
@@ -412,6 +536,10 @@ void GameServer::HandleIncomingPackets(sf::Packet& packet, RemotePeer& receiving
 
     case Client::PacketType::kStateUpdate:
     {
+        // The server is authoritative over aircraft positions/rotations: it
+        // computes them from player inputs in SimulateMovement. Client-reported
+        // positions are NOT trusted, so we parse the packet only to keep the
+        // byte stream aligned and then discard the values.
         uint8_t num_aircraft;
         packet >> num_aircraft;
 
@@ -421,9 +549,7 @@ void GameServer::HandleIncomingPackets(sf::Packet& packet, RemotePeer& receiving
             sf::Vector2f aircraft_position;
             float rotation;
             packet >> aircraft_identifier >> aircraft_position.x >> aircraft_position.y >> rotation;
-
-            m_aircraft_info[aircraft_identifier].m_position = aircraft_position;
-            m_aircraft_info[aircraft_identifier].m_rotation = rotation;
+            // Intentionally ignored - authoritative state lives on the server.
         }
     }
     break;
@@ -634,50 +760,24 @@ void GameServer::SendToPeer(RemotePeer& peer, sf::Packet& packet)
 
 void GameServer::UpdateClientState()
 {
-    // Send position/rotation updates, per-peer, skipping each client's own aircraft
-    for (std::size_t i = 0; i < m_connected_players; ++i)
+    // The server is authoritative over movement, so it broadcasts the computed
+    // state of EVERY aircraft to EVERY peer, including each peer's own aircraft.
+    // Clients apply these positions to all aircraft (their own included) rather
+    // than deciding their own position locally.
+    sf::Packet packet;
+    packet << static_cast<uint8_t>(Server::PacketType::kUpdateClientState);
+    packet << static_cast<uint8_t>(m_aircraft_info.size());
+
+    for (const auto& [id, aircraft] : m_aircraft_info)
     {
-        if (!m_peers[i] || !m_peers[i]->m_ready)
-            continue;
-
-        sf::Packet packet;
-        packet << static_cast<uint8_t>(Server::PacketType::kUpdateClientState);
-
-        // First pass: count aircraft that are NOT owned by this peer
-        uint8_t aircraftCount = 0;
-        for (const auto& [id, aircraft] : m_aircraft_info)
-        {
-            if (std::find(
-                    m_peers[i]->m_aircraft_identifiers.begin(),
-                    m_peers[i]->m_aircraft_identifiers.end(),
-                    id
-                ) == m_peers[i]->m_aircraft_identifiers.end())
-            {
-                ++aircraftCount;
-            }
-        }
-
-        packet << aircraftCount;
-
-        // Second pass: serialize aircraft data for all aircraft NOT owned by this peer
-        for (const auto& [id, aircraft] : m_aircraft_info)
-        {
-            if (std::find(
-                    m_peers[i]->m_aircraft_identifiers.begin(),
-                    m_peers[i]->m_aircraft_identifiers.end(),
-                    id
-                ) == m_peers[i]->m_aircraft_identifiers.end())
-            {
-                packet
-                    << id
-                    << aircraft.m_position.x
-                    << aircraft.m_position.y
-                    << aircraft.m_rotation;
-            }
-        }
-
-        SendToPeer(*m_peers[i], packet);
+        packet
+            << id
+            << aircraft.m_position.x
+            << aircraft.m_position.y
+            << aircraft.m_rotation;
     }
+
+    SendToAll(packet);
 }
 
 NetworkStats GameServer::GetNetworkStats() const

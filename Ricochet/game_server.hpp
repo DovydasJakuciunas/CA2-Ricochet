@@ -12,8 +12,6 @@
 #include <mutex>
 #include "network_stats.hpp"
 
-class PhysicsSimulator;
-
 class GameServer
 {
 public:
@@ -45,6 +43,13 @@ private:
 		uint8_t m_hitpoints;
 		uint8_t m_missile_ammo;
 		std::map<uint8_t, bool> m_real_time_actions;
+
+		// Authoritative movement simulation state
+		sf::Vector2f m_velocity = sf::Vector2f(0.f, 0.f);
+		sf::Time m_forward_time = sf::Time::Zero;          // accumulated while forward is held
+		sf::Time m_release_time = sf::Time::Zero;          // accumulated since forward was released
+		sf::Vector2f m_velocity_at_release = sf::Vector2f(0.f, 0.f);
+		bool m_was_forward_pressed = false;
 	};
 
 	typedef std::unique_ptr<RemotePeer> PeerPtr;
@@ -88,8 +93,6 @@ private:
 
 	sf::Time m_last_spawn_time;
 	sf::Time m_time_for_next_spawn;
-
-	std::unique_ptr<PhysicsSimulator> m_physics_simulator;
 
 	// Network update rate: send state every 2 ticks (10 Hz network, 20 Hz simulation)
 	int m_network_tick_counter;

@@ -12,6 +12,7 @@
 #include "pickup_type.hpp"
 #include <iostream>
 #include <sstream>
+#include <algorithm>
 
 std::optional<sf::IpAddress> MultiplayerGameState::GetAddressFromFile()
 {
@@ -310,19 +311,11 @@ bool MultiplayerGameState::Update(sf::Time dt)
 
 		if (m_state_update_clock.getElapsedTime() > sf::seconds(1.f / 10.f))
 		{
-			sf::Packet position_update_packet;
-			position_update_packet << static_cast<uint8_t>(Client::PacketType::kStateUpdate);
-			position_update_packet << static_cast<uint8_t>(m_local_player_identifiers.size());
-
-			for (uint8_t identifier : m_local_player_identifiers)
-			{
-				if (Aircraft* aircraft = m_world.GetAircraft(identifier))
-				{
-					position_update_packet << identifier << aircraft->getPosition().x << aircraft->getPosition().y << aircraft->getRotation().asDegrees();
-				}
-			}
-			m_socket.send(position_update_packet);
-			m_bytes_sent += position_update_packet.getDataSize();
+			// The server is authoritative over positions and simulates movement
+			// from the input commands we send. We intentionally do NOT report our
+			// own positions back to the server; doing so would let each owner
+			// decide where its aircraft is. The clock is still restarted so the
+			// heartbeat cadence below behaves as before.
 			m_state_update_clock.restart();
 		}
 
@@ -495,6 +488,9 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 		if (aircraft)
 		{
 			aircraft->setPosition(aircraft_position);
+			// This is the local player's own aircraft: enable client-side
+			// prediction + reconciliation for it.
+			aircraft->SetLocallyControlled(true);
 		}
 
 		// Use player_id (0-based) as the Player's identifier, not aircraft_identifier (1-based)
@@ -652,12 +648,21 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 			packet >> aircraft_identifier >> aircraft_position.x >> aircraft_position.y >> rotation;
 
 			Aircraft* aircraft = m_world.GetAircraft(aircraft_identifier);
-			bool is_local_plane = std::find(m_local_player_identifiers.begin(), m_local_player_identifiers.end(), aircraft_identifier) != m_local_player_identifiers.end();
 
-			if (aircraft && !is_local_plane)
+			if (aircraft)
 			{
-				// Add snapshot to buffer for interpolation (position, rotation)
-				aircraft->AddNetworkSnapshot(aircraft_position, rotation);
+				if (aircraft->IsLocallyControlled())
+				{
+					// Local player's own aircraft: feed the authoritative state
+					// into the reconciliation path so client-side prediction is
+					// gently corrected instead of overwritten.
+					aircraft->ApplyServerCorrection(aircraft_position, rotation);
+				}
+				else
+				{
+					// Remote aircraft: buffer the state for smooth interpolation.
+					aircraft->AddNetworkSnapshot(aircraft_position, rotation);
+				}
 			}
 		}
 	}

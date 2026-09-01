@@ -30,7 +30,6 @@ namespace Client
 		kStateUpdate, //sf::Int32 with number of local aircraft, for each aircraft send sf::Int32 identifier, two floats for position, health and ammo
 		kHeartbeat, // Lightweight keepalive packet to prevent client timeout; no payload
 		kGameEvent, //This is for explosions
-		kInputCommand, // Aircraft ID (uint8_t), Action type (uint8_t), Action enabled (bool) - Replaces kStateUpdate for server-authoritative gameplay
 		kQuit
 	};
 }

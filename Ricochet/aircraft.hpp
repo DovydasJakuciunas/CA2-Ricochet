@@ -73,6 +73,11 @@ public:
 	void AddNetworkSnapshot(sf::Vector2f position, float rotation);
 	void UpdateNetworkInterpolation(sf::Time dt);
 
+	// Client-side prediction + reconciliation (local player's aircraft)
+	void SetLocallyControlled(bool locally_controlled);
+	bool IsLocallyControlled() const;
+	void ApplyServerCorrection(sf::Vector2f position, float rotation);
+
 private:
 	virtual void DrawCurrent(sf::RenderTarget& target, sf::RenderStates states) const;
 	virtual void UpdateCurrent(sf::Time dt, CommandQueue& commands) override;
@@ -114,7 +119,13 @@ private:
 	std::deque<NetworkSnapshot> m_snapshot_buffer;
 	sf::Clock m_snapshot_clock;  // local time for lookback
 	static constexpr float SNAPSHOT_BUFFER_MAX_SIZE = 10;  // ~1 second @ 10Hz
-	static constexpr float INTERPOLATION_DELAY_MS = 100.f;  // Display time 100ms in the past
+	static constexpr int INTERPOLATION_DELAY_MS = 100;  // Display time 100ms in the past
+
+	// Client-side prediction + reconciliation state (local player's aircraft only)
+	bool m_is_locally_controlled = false;   // true for the local player's own aircraft
+	bool m_has_server_correction = false;   // true once an authoritative update has arrived
+	sf::Vector2f m_server_position;          // latest authoritative position
+	float m_server_rotation = 0.f;           // latest authoritative rotation (degrees)
 
 };
 

@@ -10,6 +10,9 @@ struct AircraftMover
     AircraftMover(float vx, float vy) : velocity(vx, vy) {}
     void operator()(Aircraft& aircraft, sf::Time) const
     {
+        // Prediction only applies to the local player's own aircraft
+        if (!aircraft.IsLocallyControlled())
+            return;
         aircraft.Accelerate(velocity);
     }
 
@@ -21,6 +24,10 @@ struct AircraftRotator
     AircraftRotator(float rotation) : rotation(rotation) {}
     void operator()(Aircraft& aircraft, sf::Time) const
     {
+        // Prediction only applies to the local player's own aircraft
+        if (!aircraft.IsLocallyControlled())
+            return;
+
         sf::Vector2f velocity = aircraft.GetVelocity();
         float speed = std::sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
 
@@ -40,6 +47,10 @@ struct AircraftForwardMover
 {
     void operator()(Aircraft& aircraft, sf::Time dt) const
     {
+        // Prediction only applies to the local player's own aircraft
+        if (!aircraft.IsLocallyControlled())
+            return;
+
         float speed = aircraft.GetMaxSpeed();
 
         double radians = Utility::toRadians(aircraft.getRotation().asDegrees() + 90.f);
@@ -177,7 +188,10 @@ void Player::HandleRealTimeInput(CommandQueue& command_queue)
     {
         std::vector<Action> activeActions = m_key_binding->GetRealtimeActions();
 
-        // Push only movement actions (fire/missile are handled separately as one-shot)
+        // CLIENT-SIDE PREDICTION: apply movement locally for immediate
+        // responsiveness. The server is still authoritative and will correct us
+        // (see Aircraft reconciliation); we also forward the input below so the
+        // server can simulate the same movement.
         for (Action action : activeActions)
         {
             if (action != Action::kBulletFire && action != Action::kMissileFire)
