@@ -88,6 +88,10 @@ struct AircraftForwardAccelerationReset
 {
     void operator()(Aircraft& aircraft, sf::Time) const
     {
+
+        if (!aircraft.IsLocallyControlled())
+            return;
+
         aircraft.GetMovementController().ResetForwardTime();
         aircraft.GetMovementController().ResetReleaseTime();
         aircraft.GetMovementController().StoreVelocityAtRelease();
@@ -98,6 +102,10 @@ struct AircraftDecelerator
 {
     void operator()(Aircraft& aircraft, sf::Time dt) const
     {
+        // Only mutate the local player's own aircraft
+        if (!aircraft.IsLocallyControlled())
+            return;
+
         aircraft.GetMovementController().IncrementReleaseTime(dt);
 
         float releaseTime = aircraft.GetMovementController().GetReleaseTime().asSeconds();

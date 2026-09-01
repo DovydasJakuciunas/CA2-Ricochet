@@ -33,6 +33,9 @@ void PhysicsSimulator::HandlePlayerBoundaryCollision(const std::vector<Aircraft*
 	{
 		if (player)
 		{
+			if (player->IsLocallyControlled())
+				continue;
+
 			BounceAircraftOffWall(player);
 		}
 	}

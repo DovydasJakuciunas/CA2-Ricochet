@@ -57,6 +57,7 @@ GameServer::~GameServer()
 
 void GameServer::NotifyPlayerSpawn(uint8_t aircraft_identifier)
 {
+    std::lock_guard<std::recursive_mutex> lock(m_state_mutex);
     sf::Packet packet;
     //First thing in every is what type of packet it is
     packet << static_cast<uint8_t>(Server::PacketType::kPlayerConnect);
@@ -66,6 +67,7 @@ void GameServer::NotifyPlayerSpawn(uint8_t aircraft_identifier)
 
 void GameServer::NotifyPlayerRealtimeChange(uint8_t aircraft_identifier, uint8_t action, bool action_enabled)
 {
+    std::lock_guard<std::recursive_mutex> lock(m_state_mutex);
     // Store the input state so the server can authoritatively simulate movement
     auto found = m_aircraft_info.find(aircraft_identifier);
     if (found != m_aircraft_info.end())
@@ -85,6 +87,7 @@ void GameServer::NotifyPlayerRealtimeChange(uint8_t aircraft_identifier, uint8_t
 
 void GameServer::NotifyPlayerEvent(uint8_t aircraft_identifier, int8_t action)
 {
+    std::lock_guard<std::recursive_mutex> lock(m_state_mutex);
     sf::Packet packet;
     //First thing in every is what type of packet it is
     packet << static_cast<uint8_t>(Server::PacketType::kPlayerEvent);
@@ -95,12 +98,14 @@ void GameServer::NotifyPlayerEvent(uint8_t aircraft_identifier, int8_t action)
 
 void GameServer::NotifyPickupSpawn(uint32_t pickup_id, int pickup_type, sf::Vector2f position)
 {
+    std::lock_guard<std::recursive_mutex> lock(m_state_mutex);
     // Queue the pickup spawn for batching instead of sending immediately
     m_batched_pickup_spawns.push_back({pickup_id, static_cast<int32_t>(pickup_type), position.x, position.y});
 }
 
 void GameServer::NotifyPickupCollected(uint32_t pickup_id)
 {
+    std::lock_guard<std::recursive_mutex> lock(m_state_mutex);
     // Queue the pickup despawn for batching (will be flushed with spawns)
     m_batched_pickup_despawns.push_back(pickup_id);
 }
@@ -181,27 +186,35 @@ void GameServer::ExecutionThread()
 
         while (!m_waiting_thread_end)
         {
-            //This is the game loop
-            HandleIncomingConnections();
-            HandleIncomingPackets();
-
-            frame_time += frame_clock.getElapsedTime();
-            frame_clock.restart();
-            tick_time += tick_clock.getElapsedTime();
-            tick_clock.restart();
-
-            //Fixed time step for movement simulation at 60 Hz
-            while (frame_time >= frame_rate)
             {
-                SimulateMovement(frame_rate);
-                frame_time -= frame_rate;
-            }
+                // Guard every access to shared game state (m_peers, m_aircraft_info,
+                // batched pickup buffers, etc.) against concurrent Notify* calls from
+                // the main thread. The lock is released before sleeping so the main
+                // thread is never blocked while this worker idles.
+                std::lock_guard<std::recursive_mutex> lock(m_state_mutex);
 
-            //Network updates at 20 Hz
-            while (tick_time >= tick_rate)
-            {
-                Tick();
-                tick_time -= tick_rate;
+                //This is the game loop
+                HandleIncomingConnections();
+                HandleIncomingPackets();
+
+                frame_time += frame_clock.getElapsedTime();
+                frame_clock.restart();
+                tick_time += tick_clock.getElapsedTime();
+                tick_clock.restart();
+
+                //Fixed time step for movement simulation at 60 Hz
+                while (frame_time >= frame_rate)
+                {
+                    SimulateMovement(frame_rate);
+                    frame_time -= frame_rate;
+                }
+
+                //Network updates at 20 Hz
+                while (tick_time >= tick_rate)
+                {
+                    Tick();
+                    tick_time -= tick_rate;
+                }
             }
 
             //sleep to allow me to run the client on this machine as well
@@ -231,7 +244,7 @@ void GameServer::SimulateMovement(sf::Time dt)
     // Movement constants mirror the client model (see constants.hpp / data_tables.cpp)
     const float kAircraftMaxSpeed = 225.f;   // Eagle speed
     const float kMinSpeedThreshold = 0.1f;
-    const float kAircraftHalfSize = 20.f;    // approximate 40x40 aircraft
+    const float kAircraftHalfSize = 24.f;    // 48x48 aircraft
 
     const float left_bound = m_battlefield_rect.position.x;
     const float right_bound = m_battlefield_rect.position.x + m_battlefield_rect.size.x;
@@ -351,26 +364,49 @@ void GameServer::SimulateMovement(sf::Time dt)
         info.m_position += info.m_velocity * dt_seconds;
 
         // --- Wall bounce: clamp inside battlefield and invert velocity component ---
+        bool bounced = false;
         if (info.m_position.x - kAircraftHalfSize <= left_bound)
         {
             info.m_position.x = left_bound + kAircraftHalfSize;
             info.m_velocity.x = -info.m_velocity.x;
+            info.m_velocity_at_release.x = -info.m_velocity_at_release.x;
+            bounced = true;
         }
         else if (info.m_position.x + kAircraftHalfSize >= right_bound)
         {
             info.m_position.x = right_bound - kAircraftHalfSize;
             info.m_velocity.x = -info.m_velocity.x;
+            info.m_velocity_at_release.x = -info.m_velocity_at_release.x;
+            bounced = true;
         }
 
         if (info.m_position.y - kAircraftHalfSize <= top_bound)
         {
             info.m_position.y = top_bound + kAircraftHalfSize;
             info.m_velocity.y = -info.m_velocity.y;
+            info.m_velocity_at_release.y = -info.m_velocity_at_release.y;
+            bounced = true;
         }
         else if (info.m_position.y + kAircraftHalfSize >= bottom_bound)
         {
             info.m_position.y = bottom_bound - kAircraftHalfSize;
             info.m_velocity.y = -info.m_velocity.y;
+            info.m_velocity_at_release.y = -info.m_velocity_at_release.y;
+            bounced = true;
+        }
+        if (bounced)
+        {
+            float bounceSpeed = std::sqrt(
+                info.m_velocity.x * info.m_velocity.x +
+                info.m_velocity.y * info.m_velocity.y);
+            if (bounceSpeed >= kMinSpeedThreshold)
+            {
+                // Inverse of dir = -(cos, sin)(rotation + 90 deg)
+                double radians = std::atan2(-info.m_velocity.y, -info.m_velocity.x);
+                info.m_rotation = static_cast<float>(Utility::ToDegrees(radians)) - 90.f;
+                while (info.m_rotation < 0.f) info.m_rotation += 360.f;
+                while (info.m_rotation >= 360.f) info.m_rotation -= 360.f;
+            }
         }
     }
 }

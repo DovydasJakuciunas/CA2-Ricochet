@@ -89,7 +89,8 @@ private:
 
 	std::vector<PeerPtr> m_peers;
 	std::set<uint8_t> m_available_aircraft_ids;
-	bool m_waiting_thread_end;
+	bool m_waiting_thread_end = false;
+	mutable std::recursive_mutex m_state_mutex;
 
 	sf::Time m_last_spawn_time;
 	sf::Time m_time_for_next_spawn;

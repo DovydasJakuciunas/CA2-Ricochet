@@ -170,9 +170,6 @@ void Aircraft::UpdateCurrent(sf::Time dt, CommandQueue& commands)
 			// Detect transition from pressed to released
 			if (m_was_forward_pressed && !isForwardPressed)
 			{
-				// Forward key was just released - reset the forward hold timer so the
-				// boost only engages after holding forward continuously, and store the
-				// current velocity as baseline for deceleration
 				m_movement_controller->ResetForwardTime();
 				m_movement_controller->ResetReleaseTime();
 				m_movement_controller->StoreVelocityAtRelease();
@@ -206,19 +203,25 @@ void Aircraft::UpdateCurrent(sf::Time dt, CommandQueue& commands)
 		float distance = std::sqrt(error.x * error.x + error.y * error.y);
 
 		const float kSnapThreshold = 150.f;   // large divergence -> snap
-		const float kCorrectionRate = 12.f;   // blend speed (fraction/sec)
+		const float kDeadZone = 40.f;         // ignore lag-expected error
+		const float kCorrectionRate = 4.f;    // blend speed (fraction/sec)
 
 		if (distance > kSnapThreshold)
 		{
 			setPosition(m_server_position);
 			setRotation(sf::degrees(m_server_rotation));
 		}
-		else if (distance > 0.01f)
+		else if (distance > kDeadZone)
+		{
+			//Allows the server to attempt to correct the position of the aircraft without causing jittery movement
+			float excess = distance - kDeadZone;
+			sf::Vector2f direction = error / distance;
+			float t = std::min(1.f, kCorrectionRate * dt.asSeconds());
+			setPosition(current + direction * (excess * t));
+		}
+		else
 		{
 			float t = std::min(1.f, kCorrectionRate * dt.asSeconds());
-			setPosition(current + error * t);
-
-			// Blend rotation along the shortest angular path
 			float cur_rot = getRotation().asDegrees();
 			float delta = m_server_rotation - cur_rot;
 			while (delta > 180.f) delta -= 360.f;
@@ -365,6 +368,32 @@ bool Aircraft::IsLocallyControlled() const
 
 void Aircraft::ApplyServerCorrection(sf::Vector2f position, float rotation)
 {
+	if (m_has_server_correction)
+	{
+		float cur_rot = getRotation().asDegrees();
+		float delta = rotation - cur_rot;
+		while (delta > 180.f) delta -= 360.f;
+		while (delta < -180.f) delta += 360.f;
+
+		const float kBounceHeadingThreshold = 60.f; // sharp reversal => bounce
+		if (std::abs(delta) > kBounceHeadingThreshold)
+		{
+			sf::Vector2f velocity = GetVelocity();
+			float speed = std::sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
+			if (speed > 0.1f)
+			{
+				// Realign predicted velocity to the authoritative heading,
+				// preserving speed (dir = -(cos, sin)(rotation + 90 deg)).
+				double radians = Utility::toRadians(static_cast<double>(rotation) + 90.0);
+				float dirX = -static_cast<float>(std::cos(radians));
+				float dirY = -static_cast<float>(std::sin(radians));
+				SetVelocity(dirX * speed, dirY * speed);
+				m_movement_controller->StoreVelocityAtRelease();
+			}
+			setRotation(sf::degrees(rotation));
+		}
+	}
+
 	m_server_position = position;
 	m_server_rotation = rotation;
 	m_has_server_correction = true;
