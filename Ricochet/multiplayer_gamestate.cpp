@@ -240,9 +240,6 @@ bool MultiplayerGameState::Update(sf::Time dt)
 			}
 		}
 
-		//Win condition: first player to reach kKillsToWin kills wins the game.
-		//Only the host (authoritative) checks the score and then broadcasts
-		//kMissionSuccess to every client so they all see the Game Over screen.
 		if (m_host && m_game_server && m_game_started && !m_mission_over)
 		{
 			if (GameplayManager* gameplay_manager = m_world.GetGameplayManager())
@@ -314,11 +311,6 @@ bool MultiplayerGameState::Update(sf::Time dt)
 
 		if (m_state_update_clock.getElapsedTime() > sf::seconds(1.f / 10.f))
 		{
-			// The server is authoritative over positions and simulates movement
-			// from the input commands we send. We intentionally do NOT report our
-			// own positions back to the server; doing so would let each owner
-			// decide where its aircraft is. The clock is still restarted so the
-			// heartbeat cadence below behaves as before.
 			m_state_update_clock.restart();
 		}
 
@@ -662,9 +654,6 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 			{
 				if (aircraft->IsLocallyControlled())
 				{
-					// Local player's own aircraft: feed the authoritative state
-					// into the reconciliation path so client-side prediction is
-					// gently corrected instead of overwritten.
 					aircraft->ApplyServerCorrection(aircraft_position, rotation);
 				}
 				else

@@ -196,10 +196,6 @@ void GameServer::ExecutionThread()
         while (!m_waiting_thread_end)
         {
             {
-                // Guard every access to shared game state (m_peers, m_aircraft_info,
-                // batched pickup buffers, etc.) against concurrent Notify* calls from
-                // the main thread. The lock is released before sleeping so the main
-                // thread is never blocked while this worker idles.
                 std::lock_guard<std::recursive_mutex> lock(m_state_mutex);
 
                 //This is the game loop
@@ -234,8 +230,6 @@ void GameServer::ExecutionThread()
     catch (const std::exception& e)
     {
         std::string error_msg = std::string("GameServer thread error: ") + e.what();
-        // Log to your logging system (spdlog, custom logger, etc.)
-        // your_logger->error(error_msg);
         std::cerr << error_msg << std::endl;
         m_waiting_thread_end = true;
     }
@@ -295,10 +289,6 @@ void GameServer::SimulateMovement(sf::Time dt)
                     float dirY = -static_cast<float>(std::sin(radians));
                     info.m_velocity = sf::Vector2f(dirX * speed, dirY * speed);
 
-                    // Keep the deceleration baseline aligned to the new heading so
-                    // that a coasting aircraft continues to travel along its nose
-                    // after turning, instead of drifting in the stale release
-                    // direction captured when forward was last released.
                     float releaseSpeed = std::sqrt(
                         info.m_velocity_at_release.x * info.m_velocity_at_release.x +
                         info.m_velocity_at_release.y * info.m_velocity_at_release.y);
@@ -581,10 +571,6 @@ void GameServer::HandleIncomingPackets(sf::Packet& packet, RemotePeer& receiving
 
     case Client::PacketType::kStateUpdate:
     {
-        // The server is authoritative over aircraft positions/rotations: it
-        // computes them from player inputs in SimulateMovement. Client-reported
-        // positions are NOT trusted, so we parse the packet only to keep the
-        // byte stream aligned and then discard the values.
         uint8_t num_aircraft;
         packet >> num_aircraft;
 
@@ -615,19 +601,6 @@ void GameServer::HandleIncomingPackets(sf::Packet& packet, RemotePeer& receiving
         packet >> action;
         packet >> x;
         packet >> y;
-
-        //Enemy explodes, with a certain probability, drop a pickup
-        //To avoid multiple messages only listen to the first peer (host)
-        if (action == GameActions::kEnemyExplode && Utility::RandomInt(3) == 0 && &receiving_peer == m_peers[0].get())
-        {
-            sf::Packet packet;
-            packet << static_cast<uint8_t>(Server::PacketType::kSpawnPickup);
-            packet << static_cast<uint8_t>(Utility::RandomInt(static_cast<int>(PickupType::kPickupCount)));
-            packet << x;
-            packet << y;
-
-            SendToAll(packet);
-        }
     }
     }
 }
@@ -693,12 +666,7 @@ void GameServer::HandleIncomingConnections()
             SetListening(false);
         }
     }
-    else
-    {
-        // This is normal - means no connections are waiting, not an error
-        // Commenting out to reduce noise in logs
-        // std::cout << "[GAMESERVER] No pending connections at this moment" << std::endl;
-    }
+
 }
 
 void GameServer::HandleDisconnections()
@@ -805,10 +773,6 @@ void GameServer::SendToPeer(RemotePeer& peer, sf::Packet& packet)
 
 void GameServer::UpdateClientState()
 {
-    // The server is authoritative over movement, so it broadcasts the computed
-    // state of EVERY aircraft to EVERY peer, including each peer's own aircraft.
-    // Clients apply these positions to all aircraft (their own included) rather
-    // than deciding their own position locally.
     sf::Packet packet;
     packet << static_cast<uint8_t>(Server::PacketType::kUpdateClientState);
     packet << static_cast<uint8_t>(m_aircraft_info.size());
@@ -842,10 +806,6 @@ std::vector<uint8_t> GameServer::GetAndClearRecentlyDisconnectedAircraft()
     return result;
 }
 
-
-
-//It is essential to set the sockets to non-blocking - m_socket.setBlocking(false)
-//otherwise the server will hang waiting to read input from a connection
 GameServer::RemotePeer::RemotePeer()
     : m_ready(false)
     , m_timed_out(false)
