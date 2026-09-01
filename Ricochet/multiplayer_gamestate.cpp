@@ -52,6 +52,7 @@ MultiplayerGameState::MultiplayerGameState(StateStack& stack, Context context, b
 	, m_player_invitation_text(context.fonts->Get(FontID::kMain))
 	, m_failed_connection_text(context.fonts->Get(FontID::kMain))
 	, m_network_stats_text(context.fonts->Get(FontID::kMain))
+	, m_pause_text(context.fonts->Get(FontID::kMain))
 {
 	m_broadcast_text.setPosition(sf::Vector2f(1024.f / 2, 100.f));
 
@@ -132,12 +133,20 @@ MultiplayerGameState::MultiplayerGameState(StateStack& stack, Context context, b
 					received_spawn_self = true;
 				}
 			}
-			// Small sleep to prevent busy-waiting
-			sf::sleep(sf::milliseconds(10));
-		}
-	}
+					// Small sleep to prevent busy-waiting
+					sf::sleep(sf::milliseconds(10));
+				}
+			}
 
-	//Play the game music
+				// Initialize pause overlay text
+				m_pause_text.setFont(context.fonts->Get(FontID::kMain));
+				m_pause_text.setString("Paused\nPress ESC to Resume\nPress Backspace to Exit to Menu");
+				m_pause_text.setCharacterSize(40);
+				m_pause_text.setFillColor(sf::Color::White);
+				Utility::CentreOrigin(m_pause_text);
+				m_pause_text.setPosition(sf::Vector2f(m_window.getSize().x / 2.f, m_window.getSize().y / 2.f));
+
+				//Play the game music
 	context.music->Play(MusicThemes::kMissionTheme);
 }
 
@@ -159,6 +168,16 @@ void MultiplayerGameState::Draw()
 		if (m_show_stats)
 		{
 			m_window.draw(m_network_stats_text);
+		}
+
+		// Draw pause overlay if paused
+		if (m_paused)
+		{
+			sf::RectangleShape pause_overlay;
+			pause_overlay.setFillColor(sf::Color(0, 0, 0, 150));
+			pause_overlay.setSize(m_window.getView().getSize());
+			m_window.draw(pause_overlay);
+			m_window.draw(m_pause_text);
 		}
 	}
 	else
@@ -217,7 +236,7 @@ bool MultiplayerGameState::Update(sf::Time dt)
 
 		//Handle all realtime input for players with correct PlayerID
 		CommandQueue& commands = m_world.GetCommandQueue();
-		if (m_active_state && m_has_focus)
+		if (m_active_state && m_has_focus && !m_paused)
 		{
 			for (auto& pair : m_players)
 			{
@@ -315,20 +334,6 @@ bool MultiplayerGameState::Update(sf::Time dt)
 			m_stats_update_clock.restart();
 		}
 
-		// Print bandwidth stats every 5 seconds
-		if (m_bandwidth_clock.getElapsedTime() > sf::seconds(5.f))
-		{
-			float elapsed = m_bandwidth_clock.getElapsedTime().asSeconds();
-			float sent_kbps = (m_bytes_sent * 8) / (elapsed * 1000.f);
-			float received_kbps = (m_bytes_received * 8) / (elapsed * 1000.f);
-
-			std::cout << "[BANDWIDTH] Sent: " << sent_kbps << " Kbps (" << m_bytes_sent << " bytes) "
-					  << "| Received: " << received_kbps << " Kbps (" << m_bytes_received << " bytes)" << std::endl;
-
-			m_bytes_sent = 0;
-			m_bytes_received = 0;
-			m_bandwidth_clock.restart();
-		}
 		m_time_since_last_packet += dt;
 	}
 
@@ -354,14 +359,20 @@ bool MultiplayerGameState::HandleEvent(const sf::Event& event)
 	const auto* key_pressed = event.getIf<sf::Event::KeyPressed>();
 	if (key_pressed)
 	{
-		//If escape is pressed, show the pause screen
+		//If escape is pressed, toggle pause
 		if (key_pressed->scancode == sf::Keyboard::Scancode::Escape)
 		{
-			DisableAllRealtimeActions(false);
-			RequestStackPush(StateID::kNetworkPause);
+			m_paused = !m_paused;
+			GetContext().music->SetPaused(m_paused);
 		}
-		// Toggle stats display with 'S' key
-		else if (key_pressed->scancode == sf::Keyboard::Scancode::S)
+		// If backspace is pressed while paused, exit to main menu
+		else if (key_pressed->scancode == sf::Keyboard::Scancode::Backspace && m_paused)
+		{
+			RequestStackClear();
+			RequestStackPush(StateID::kMenu);
+		}
+		// Toggle stats display with 'M' key
+		else if (key_pressed->scancode == sf::Keyboard::Scancode::M)
 		{
 			m_show_stats = !m_show_stats;
 		}

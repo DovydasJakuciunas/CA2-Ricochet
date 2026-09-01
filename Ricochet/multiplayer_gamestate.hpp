@@ -66,4 +66,8 @@ private:
 	NetworkStats m_current_stats;
 	sf::Clock m_stats_update_clock;
 	bool m_show_stats = true;
+
+	// Pause state
+	bool m_paused = false;
+	sf::Text m_pause_text;
 };
