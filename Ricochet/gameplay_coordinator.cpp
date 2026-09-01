@@ -100,4 +100,3 @@ void GameplayCoordinator::SetPickupCollectedCallback(PickupCollectedCallback cal
 		m_collision_handler->SetPickupCollectedCallback(callback);
 	}
 }
-}

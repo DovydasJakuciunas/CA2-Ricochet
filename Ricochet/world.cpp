@@ -263,6 +263,16 @@ void World::SetPickupBroadcasterCallback(std::function<void(uint32_t, int, sf::V
 	m_pickup_broadcaster = callback;
 }
 
+void World::SetPickupCollectedCallback(std::function<void(uint32_t)> callback)
+{
+	m_pickup_collected_callback = callback;
+	// Also set it on the GameplayCoordinator if it exists
+	if (m_gameplay_coordinator)
+	{
+		m_gameplay_coordinator->SetPickupCollectedCallback(callback);
+	}
+}
+
 // Multiplayer aircraft management methods
 Aircraft* World::GetAircraft(uint8_t aircraft_id)
 {
@@ -457,6 +467,12 @@ void World::InitializeGameplayCoordinator()
 			m_textures,
 			m_sounds
 		);
+
+		// Set pickup collected callback if one was registered
+		if (m_pickup_collected_callback)
+		{
+			m_gameplay_coordinator->SetPickupCollectedCallback(m_pickup_collected_callback);
+		}
 	}
 }
 

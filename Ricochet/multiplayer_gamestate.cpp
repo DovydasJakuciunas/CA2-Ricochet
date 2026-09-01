@@ -75,6 +75,15 @@ MultiplayerGameState::MultiplayerGameState(StateStack& stack, Context context, b
 				m_game_server->NotifyPickupSpawn(pickup_id, pickup_type, position);
 			}
 		});
+
+		// Setup pickup collected callback for host to notify clients
+		m_world.SetPickupCollectedCallback([this](uint32_t pickup_id)
+		{
+			if (m_game_server)
+			{
+				m_game_server->NotifyPickupCollected(pickup_id);
+			}
+		});
 	}
 
 	//Use this for "Attempt to connect" and "Failed to connect" messages
@@ -509,6 +518,20 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 			m_world.SpawnPickupFromNetwork(pickup_id, pickup_type, sf::Vector2f(x, y));
 		}
 
+	}
+	break;
+
+	case Server::PacketType::kPickupCollected:
+	{
+		uint32_t despawn_count;
+		packet >> despawn_count;
+
+		for (uint32_t i = 0; i < despawn_count; ++i)
+		{
+			uint32_t pickup_id;
+			packet >> pickup_id;
+			m_world.RemovePickup(pickup_id);
+		}
 	}
 	break;
 

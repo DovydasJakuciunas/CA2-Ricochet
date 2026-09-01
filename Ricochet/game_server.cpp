@@ -91,6 +91,12 @@ void GameServer::NotifyPickupSpawn(uint32_t pickup_id, int pickup_type, sf::Vect
     m_batched_pickup_spawns.push_back({pickup_id, static_cast<int32_t>(pickup_type), position.x, position.y});
 }
 
+void GameServer::NotifyPickupCollected(uint32_t pickup_id)
+{
+    // Queue the pickup despawn for batching (will be flushed with spawns)
+    m_batched_pickup_despawns.push_back(pickup_id);
+}
+
 void GameServer::FlushPickupBatch()
 {
     if (m_batched_pickup_spawns.empty())
@@ -110,6 +116,27 @@ void GameServer::FlushPickupBatch()
 
     SendToAll(packet);
     m_batched_pickup_spawns.clear();  // Clear the batch after sending
+}
+
+void GameServer::FlushPickupDespawns()
+{
+    if (m_batched_pickup_despawns.empty())
+    {
+        return;  // Nothing to send
+    }
+
+    // Create a single batch packet containing all pending pickup despawns
+    sf::Packet packet;
+    packet << static_cast<uint8_t>(Server::PacketType::kPickupCollected);
+    packet << static_cast<uint32_t>(m_batched_pickup_despawns.size());  // Number of pickups to despawn
+
+    for (uint32_t pickup_id : m_batched_pickup_despawns)
+    {
+        packet << pickup_id;
+    }
+
+    SendToAll(packet);
+    m_batched_pickup_despawns.clear();  // Clear the batch after sending
 }
 
 void GameServer::SetListening(bool enable)
@@ -155,12 +182,14 @@ void GameServer::ExecutionThread()
             tick_time += tick_clock.getElapsedTime();
             tick_clock.restart();
 
-            //Fixed time step
+            //Fixed time step for movement simulation at 60 Hz
             while (frame_time >= frame_rate)
             {
+                SimulateMovement(frame_rate);
                 frame_time -= frame_rate;
             }
 
+            //Network updates at 20 Hz
             while (tick_time >= tick_rate)
             {
                 Tick();
@@ -174,13 +203,20 @@ void GameServer::ExecutionThread()
     }
     catch (const std::exception& e)
     {
+        std::string error_msg = std::string("GameServer thread error: ") + e.what();
+        // Log to your logging system (spdlog, custom logger, etc.)
+        // your_logger->error(error_msg);
+        std::cerr << error_msg << std::endl;
+        m_waiting_thread_end = true;
     }
     catch (...)
     {
+        std::cerr << "GameServer thread: Unknown exception" << std::endl;
+        m_waiting_thread_end = true;
     }
 }
 
-void GameServer::Tick()
+void GameServer::SimulateMovement(sf::Time dt)
 {
     // Apply server-side physics: bounce aircraft off walls
     if (m_physics_simulator)
@@ -213,15 +249,14 @@ void GameServer::Tick()
             }
         }
     }
+}
 
-    // Send state updates every 2 ticks (10 Hz network, 20 Hz simulation)
-    m_network_tick_counter++;
-    if (m_network_tick_counter >= 2)
-    {
-        UpdateClientState();
-        FlushPickupBatch();  // Flush any queued pickup spawns
-        m_network_tick_counter = 0;
-    }
+void GameServer::Tick()
+{
+    // Send state updates at 20 Hz
+    UpdateClientState();
+    FlushPickupBatch();  // Flush any queued pickup spawns
+    FlushPickupDespawns();  // Flush any queued pickup despawns
 
     //Remove aircraft that have been destroyed
     for (auto itr = m_aircraft_info.begin(); itr != m_aircraft_info.end();)
@@ -235,8 +270,6 @@ void GameServer::Tick()
             ++itr;
         }
     }
-
-
 }
 
 sf::Time GameServer::Now() const

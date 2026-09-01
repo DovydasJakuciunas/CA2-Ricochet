@@ -23,6 +23,7 @@ public:
 	void NotifyPlayerRealtimeChange(uint8_t aircraft_identifier, uint8_t action, bool action_enabled);
 	void NotifyPlayerEvent(uint8_t aircraft_identifier, int8_t action);
 	void NotifyPickupSpawn(uint32_t pickup_id, int pickup_type, sf::Vector2f position);
+	void NotifyPickupCollected(uint32_t pickup_id);
 	NetworkStats GetNetworkStats() const;
 	std::vector<uint8_t> GetAndClearRecentlyDisconnectedAircraft();
 
@@ -51,6 +52,7 @@ private:
 private:
 	void SetListening(bool enable);
 	void ExecutionThread();
+	void SimulateMovement(sf::Time dt);
 	void Tick();
 	sf::Time Now() const;
 
@@ -112,7 +114,9 @@ private:
 		float x, y;
 	};
 	std::vector<PickupSpawnData> m_batched_pickup_spawns;
+	std::vector<uint32_t> m_batched_pickup_despawns;
 	void FlushPickupBatch();
+	void FlushPickupDespawns();
 
 	std::thread m_thread;
 };
