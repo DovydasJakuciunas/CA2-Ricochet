@@ -48,72 +48,8 @@ void CollisionHandler::HandleCollisions()
 		// Player-to-Player collision
 		if ((MatchesCategories(pair, ReceiverCategories::kPlayerAircraft, ReceiverCategories::kPlayerAircraft)))
 		{
-			auto& aircraft1 = static_cast<Aircraft&>(*pair.first);
-			auto& aircraft2 = static_cast<Aircraft&>(*pair.second);
-
-			// Skip collision if either aircraft is immune
-			if (aircraft1.IsCollisionImmune() || aircraft2.IsCollisionImmune())
-			{
-				continue;
-			}
-
-			// Calculate collision normal (direction from aircraft1 to aircraft2)
-			sf::Vector2f collision_normal = aircraft2.GetWorldPosition() - aircraft1.GetWorldPosition();
-			float distance = std::sqrt(collision_normal.x * collision_normal.x + collision_normal.y * collision_normal.y);
-			if (distance > 0.f)
-			{
-				collision_normal /= distance;  // Normalize
-			}
-			else
-			{
-				collision_normal = sf::Vector2f(1.f, 0.f);  // Default direction if at same position
-			}
-
-			// Realistic bounce - reverse only the impact component
-			// Decompose velocities into normal (collision) and tangential (parallel) components
-
-			// Process aircraft1
-			sf::Vector2f vel1 = aircraft1.GetVelocity();
-			float vel1_normal = vel1.x * collision_normal.x + vel1.y * collision_normal.y;
-			sf::Vector2f vel1_normal_vec = collision_normal * vel1_normal;
-			sf::Vector2f vel1_tangential = vel1 - vel1_normal_vec;
-
-			// Process aircraft2
-			sf::Vector2f vel2 = aircraft2.GetVelocity();
-			float vel2_normal = vel2.x * collision_normal.x + vel2.y * collision_normal.y;
-			sf::Vector2f vel2_normal_vec = collision_normal * vel2_normal;
-			sf::Vector2f vel2_tangential = vel2 - vel2_normal_vec;
-
-			// Reverse normal components and recombine
-			aircraft1.SetVelocity(-vel1_normal_vec + vel1_tangential);
-			aircraft2.SetVelocity(-vel2_normal_vec + vel2_tangential);
-
-			// Calculate speeds for damage logic
-			float speed1 = std::sqrt(vel1.x * vel1.x + vel1.y * vel1.y);
-			float speed2 = std::sqrt(vel2.x * vel2.x + vel2.y * vel2.y);
-
-			// Grace period duration (0.5 seconds)
-			constexpr sf::Time kCollisionGracePeriod = sf::milliseconds(500);
-
-			// Only the slower aircraft takes damage
-			if (speed1 < speed2)
-			{
-				aircraft1.Damage(10);
-				aircraft1.SetCollisionImmunity(kCollisionGracePeriod);
-			}
-			else if (speed2 < speed1)
-			{
-				aircraft2.Damage(10);
-				aircraft2.SetCollisionImmunity(kCollisionGracePeriod);
-			}
-			// If speeds are equal, both take damage and both get immunity
-			else
-			{
-				aircraft1.Damage(10);
-				aircraft2.Damage(10);
-				aircraft1.SetCollisionImmunity(kCollisionGracePeriod);
-				aircraft2.SetCollisionImmunity(kCollisionGracePeriod);
-			}
+			// Disabled: No player-to-player collisions
+			continue;
 		}
 		// Pickup collection
 		else if (MatchesCategories(pair, ReceiverCategories::kPlayerAircraft, ReceiverCategories::kPickup))
@@ -131,7 +67,7 @@ void CollisionHandler::HandleCollisions()
 			auto& player = static_cast<Aircraft&>(*pair.first);
 			auto& projectile = static_cast<Projectile&>(*pair.second);
 			// In PvP, player can be damaged by other players' projectiles
-			if (projectile.GetOwnerPlayerID() != PlayerID::kPlayer1)
+			if (projectile.GetOwnerPlayerID() != player.GetPlayerID())
 			{
 				player.Damage(projectile.GetDamage());
 				projectile.Destroy();

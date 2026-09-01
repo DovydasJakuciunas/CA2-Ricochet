@@ -157,7 +157,7 @@ void Aircraft::UpdateCurrent(sf::Time dt, CommandQueue& commands)
 	}
 
 	// Apply deceleration if forward key is not pressed and this is the player's aircraft
-	if (m_key_binding && m_player_id == PlayerID::kPlayer1)
+	if (m_key_binding)
 	{
 		bool isForwardPressed = sf::Keyboard::isKeyPressed(m_key_binding->GetAssignedKey(Action::kMoveUp));
 

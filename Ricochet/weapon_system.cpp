@@ -142,8 +142,11 @@ void WeaponSystem::CheckProjectileLaunch(sf::Time dt, CommandQueue& commands)
 
 bool WeaponSystem::IsAllied() const
 {
-	// For single player, the player's projectiles are allied
-	return m_aircraft->GetPlayerID() == PlayerID::kPlayer1;
+	// In PvP multiplayer, all player projectiles are "allied" in the sense that
+	// they're all the same type (kAlliedBullet). Damage is controlled by checking
+	// if the projectile owner is different from the hit aircraft.
+	// Only AI enemy aircraft (which don't have a valid player ID control) would be non-allied.
+	return true;
 }
 
 void WeaponSystem::CreateBullet(SceneNode& node, const TextureHolder& textures)

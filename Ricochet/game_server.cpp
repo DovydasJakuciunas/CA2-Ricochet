@@ -7,6 +7,7 @@
 #include <SFML/Network/Packet.hpp>
 #include <SFML/System/Sleep.hpp>
 #include <iostream>
+#include <cmath>
 
 GameServer::GameServer(sf::Vector2f battlefield_size)
     : m_listening_state(false)
@@ -191,41 +192,6 @@ void GameServer::Tick()
         }
     }
 
-    //Check if it is time to spawn enemies
-    if (Now() >= m_time_for_next_spawn + m_last_spawn_time)
-    {
-        //Not going to spawn any enemies towards the end of the level
-        if (m_battlefield_rect.position.y > 600.f)
-        {
-            std::size_t enemy_count = 1 + Utility::RandomInt(2);
-            float spawn_centre = static_cast<float>(Utility::RandomInt(500) - 250);
-
-            //If there is only one enemy it will spawn in centre
-            float plane_distance = 0.f;
-            float next_spawn_position = spawn_centre;
-
-            //If there are two enemies they are centred on the spawncentre
-            if (enemy_count == 2)
-            {
-                plane_distance = static_cast<float>(150 + Utility::RandomInt(250));
-                next_spawn_position = spawn_centre - plane_distance / 2.f;
-            }
-
-            //Send the spawn packets to the clients
-            for (std::size_t i = 0; i < enemy_count; ++i)
-            {
-                sf::Packet packet;
-                packet << static_cast<uint8_t>(1 + Utility::RandomInt(static_cast<int>(AircraftType::kAircraftCount) - 1));
-                packet << m_battlefield_rect.size.y + 500;
-                packet << next_spawn_position;
-
-                next_spawn_position += plane_distance / 2.f;
-                SendToAll(packet);
-            }
-            m_last_spawn_time = Now();
-            m_time_for_next_spawn = sf::milliseconds(2000 + Utility::RandomInt(6000));
-        }
-    }
 }
 
 sf::Time GameServer::Now() const
@@ -362,7 +328,14 @@ void GameServer::HandleIncomingConnections()
         std::cout << "[GAMESERVER] Player attempting to join! Total connected: " << static_cast<int>(m_connected_players + 1) << std::endl;
 
         //Order the new client to spawn its player 1
-        m_aircraft_info[m_aircraft_identifier_counter].m_position = sf::Vector2f(m_battlefield_rect.size.x / 2, m_battlefield_rect.position.y + m_battlefield_rect.size.y / 2);
+        // Vary spawn positions based on aircraft identifier to avoid players spawning on top of each other
+        float spawn_offset_angle = (m_aircraft_identifier_counter - 1) * (3.14159f * 2.f / 4.f); // Distribute around center
+        float spawn_distance = 150.f;
+        sf::Vector2f center(m_battlefield_rect.size.x / 2, m_battlefield_rect.position.y + m_battlefield_rect.size.y / 2);
+        m_aircraft_info[m_aircraft_identifier_counter].m_position = center + sf::Vector2f(
+            std::cos(spawn_offset_angle) * spawn_distance,
+            std::sin(spawn_offset_angle) * spawn_distance
+        );
         m_aircraft_info[m_aircraft_identifier_counter].m_hitpoints = 100;
         m_aircraft_info[m_aircraft_identifier_counter].m_missile_ammo = 2;
 

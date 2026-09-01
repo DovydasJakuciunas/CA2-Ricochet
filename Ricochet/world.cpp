@@ -245,8 +245,18 @@ Aircraft* World::AddAircraft(uint8_t aircraft_id, PlayerID player_id)
 	std::unique_ptr<TextNode> kill_display(new TextNode(m_fonts, *kill_text));
 	TextNode* kill_display_ptr = kill_display.get();
 
-	// Position the kill display (in a HUD-like layout) - moved down for better visibility
-	kill_display_ptr->setPosition(sf::Vector2f(10.f + (aircraft_id * 150.f), 50.f));
+	// Position the kill display vertically along the left side of the screen
+	// Account for box height (approx 70px: 42 char size + 20 padding + 4 outline + spacing)
+	const float box_height = 70.f;
+	const float screen_top = 7.5f;
+	const float screen_bottom = 768.f - box_height;  // Account for entire box height
+	const float spacing_between_players = 75.f;  // Fixed spacing between players
+
+	// Calculate Y position and clamp to screen bounds
+	float y_position = screen_top + (aircraft_id * spacing_between_players);
+	y_position = std::min(y_position, screen_bottom);
+
+	kill_display_ptr->setPosition(sf::Vector2f(150.f, y_position));
 
 	// Set larger font size for visibility
 	kill_display_ptr->SetCharacterSize(42);
@@ -274,6 +284,9 @@ Aircraft* World::AddAircraft(uint8_t aircraft_id, PlayerID player_id)
 		uint8_t player_index = aircraft_id - 1;  // Convert 1-based aircraft_id to 0-based player index
 		m_gameplay_coordinator->RegisterPlayerKillDisplay(player_index, kill_display_ptr);
 	}
+
+	// Give newly spawned aircraft collision immunity for a moment so they don't immediately take damage
+	aircraft_ptr->SetCollisionImmunity(sf::milliseconds(1000));
 
 	// Add to scene graph
 	m_scene_layers[static_cast<int>(SceneLayers::kUpperAir)]->AttachChild(std::move(aircraft));

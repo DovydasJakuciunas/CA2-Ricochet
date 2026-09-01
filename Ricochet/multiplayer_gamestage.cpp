@@ -354,8 +354,9 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 		sf::Vector2f aircraft_position;
 		packet >> aircraft_identifier >> aircraft_position.x >> aircraft_position.y;
 
-
-		Aircraft* aircraft = m_world.AddAircraft(aircraft_identifier);
+		// Convert aircraft_identifier (1-based) to PlayerID (0-based)
+		PlayerID player_id = static_cast<PlayerID>(aircraft_identifier - 1);
+		Aircraft* aircraft = m_world.AddAircraft(aircraft_identifier, player_id);
 		if (aircraft)
 		{
 			aircraft->setPosition(aircraft_position);
@@ -377,8 +378,9 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 		sf::Vector2f aircraft_position;
 		packet >> aircraft_identifier >> aircraft_position.x >> aircraft_position.y;
 
-
-		Aircraft* aircraft = m_world.AddAircraft(aircraft_identifier);
+		// Convert aircraft_identifier (1-based) to PlayerID (0-based)
+		PlayerID player_id = static_cast<PlayerID>(aircraft_identifier - 1);
+		Aircraft* aircraft = m_world.AddAircraft(aircraft_identifier, player_id);
 		if (aircraft)
 		{
 			std::cout << "[MULTIPLAYER] *** SUCCESSFULLY ADDED REMOTE AIRCRAFT TO WORLD ***" << std::endl;
@@ -415,8 +417,9 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 			sf::Vector2f aircraft_position;
 			packet >> aircraft_identifier >> aircraft_position.x >> aircraft_position.y >> hitpoints >> missile_ammo;
 
-
-			Aircraft* aircraft = m_world.AddAircraft(aircraft_identifier);
+			// Convert aircraft_identifier (1-based) to PlayerID (0-based)
+			PlayerID player_id = static_cast<PlayerID>(aircraft_identifier - 1);
+			Aircraft* aircraft = m_world.AddAircraft(aircraft_identifier, player_id);
 			if (aircraft)
 			{
 				aircraft->setPosition(aircraft_position);
