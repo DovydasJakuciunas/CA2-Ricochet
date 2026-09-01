@@ -202,6 +202,7 @@ void WeaponSystem::CreateProjectile(SceneNode& node, ProjectileType type, float 
 		projectile->setPosition(spawnPosition);
 		projectile->SetVelocity(velocity);
 		projectile->SetOwnerPlayerID(m_aircraft->GetPlayerID());
+
 		node.AttachChild(std::move(projectile));
 		m_is_launching_missile = false;
 	}

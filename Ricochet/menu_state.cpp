@@ -13,7 +13,6 @@ MenuState::MenuState(StateStack& stack, Context context) : State(stack, context)
     host_button->SetText("Host Game");
     host_button->SetCallback([this]()
         {
-            std::cout << "[MENU] Host Game button clicked - starting as server..." << std::endl;
             RequestStackPop();
             RequestStackPush(StateID::kHostGame);
         });
@@ -23,7 +22,6 @@ MenuState::MenuState(StateStack& stack, Context context) : State(stack, context)
     join_button->SetText("Join Game");
     join_button->SetCallback([this]()
         {
-            std::cout << "[MENU] Join Game button clicked - connecting as client..." << std::endl;
             RequestStackPop();
             RequestStackPush(StateID::kJoinGame);
         });

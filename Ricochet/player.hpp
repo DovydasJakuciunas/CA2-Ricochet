@@ -20,7 +20,7 @@ class Player
 {
 public:
 	Player();
-	Player(sf::TcpSocket* socket, uint8_t identifier, const KeyBinding* binding);
+	Player(sf::TcpSocket* socket, uint8_t identifier, const KeyBinding* binding, uint8_t aircraft_identifier = 0);
 	void HandleEvent(const sf::Event& event, CommandQueue& command_queue);
 	void HandleRealTimeInput(CommandQueue& command_queue);
 	void HandleRealtimeNetworkInput(CommandQueue& commands);
@@ -57,7 +57,10 @@ private:
 	const KeyBinding* m_key_binding;
 	std::map<Action, Command> m_action_binding;
 	std::map<Action, bool> m_action_proxies;
-	uint8_t m_identifier;
+	bool m_fire_state = false;  // Track whether fire button is currently held
+	bool m_missile_state = false;  // Track whether missile button is currently held
+	uint8_t m_identifier;  // Player ID (0-based)
+	uint8_t m_aircraft_identifier;  // Aircraft ID (1-based), used for network synchronization
 	sf::TcpSocket* m_socket;
 };
 

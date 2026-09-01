@@ -367,7 +367,6 @@ void World::InitializeGameplayCoordinator()
 {
 	if (!m_gameplay_coordinator)
 	{
-		std::cout << "[WORLD] Initializing GameplayCoordinator with " << m_players_list.size() << " players" << std::endl;
 		m_gameplay_coordinator = std::make_unique<GameplayCoordinator>(
 			m_players_list,
 			m_scene_graph,

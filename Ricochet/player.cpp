@@ -108,6 +108,7 @@ struct AircraftDecelerator
 Player::Player()
     : m_socket(nullptr)
     , m_identifier(0)
+    , m_aircraft_identifier(0)
     , m_key_binding(nullptr)
     , m_gameplay_manager(nullptr)
     , m_current_mission_status(MissionStatus::kMissionRunning)
@@ -115,9 +116,10 @@ Player::Player()
     InitialiseActions();
 }
 
-Player::Player(sf::TcpSocket* socket, uint8_t identifier, const KeyBinding* binding)
+Player::Player(sf::TcpSocket* socket, uint8_t identifier, const KeyBinding* binding, uint8_t aircraft_identifier)
 	: m_socket(socket)
 	, m_identifier(identifier)
+	, m_aircraft_identifier(aircraft_identifier)
 	, m_key_binding(binding)
 	, m_gameplay_manager(nullptr)
 {
@@ -141,6 +143,17 @@ void Player::HandleEvent(const sf::Event& event, CommandQueue& command_queue)
             Command cmd = m_action_binding[action];
             cmd.category = static_cast<unsigned int>(ReceiverCategories::kPlayerAircraft);
             command_queue.Push(cmd);
+
+            // Send player event to server for multiplayer synchronization
+            if (m_socket)
+            {
+                sf::Packet packet;
+                packet << static_cast<uint8_t>(Client::PacketType::kPlayerEvent);
+                // Send the aircraft_identifier (1-based) so the server can identify the aircraft
+                packet << m_aircraft_identifier;
+                packet << static_cast<uint8_t>(action);
+                m_socket->send(packet);
+            }
         }
     }
 }
@@ -163,8 +176,53 @@ void Player::HandleRealTimeInput(CommandQueue& command_queue)
     if (m_key_binding && IsLocal())
     {
         std::vector<Action> activeActions = m_key_binding->GetRealtimeActions();
+
+        // Push only movement actions (fire/missile are handled separately as one-shot)
         for (Action action : activeActions)
-            command_queue.Push(m_action_binding[action]);
+        {
+            if (action != Action::kBulletFire && action != Action::kMissileFire)
+                command_queue.Push(m_action_binding[action]);
+        }
+
+        // Track fire button state for network sync (fire on press, not hold)
+        bool currentFirePressed = std::find(activeActions.begin(), activeActions.end(), Action::kBulletFire) != activeActions.end();
+        bool currentMissilePressed = std::find(activeActions.begin(), activeActions.end(), Action::kMissileFire) != activeActions.end();
+
+        // Fire locally only on button press (transition from not-pressed to pressed)
+        if (currentFirePressed && !m_fire_state)
+        {
+            command_queue.Push(m_action_binding[Action::kBulletFire]);
+
+            // Send fire press packet to server
+            if (m_socket)
+            {
+                sf::Packet packet;
+                packet << static_cast<uint8_t>(Client::PacketType::kPlayerRealtimeChange);
+                packet << m_aircraft_identifier;
+                packet << static_cast<uint8_t>(Action::kBulletFire);
+                packet << true;  // Fire button pressed
+                m_socket->send(packet);
+            }
+        }
+        m_fire_state = currentFirePressed;
+
+        // Missile locally only on button press (transition from not-pressed to pressed)
+        if (currentMissilePressed && !m_missile_state)
+        {
+            command_queue.Push(m_action_binding[Action::kMissileFire]);
+
+            // Send missile press packet to server
+            if (m_socket)
+            {
+                sf::Packet packet;
+                packet << static_cast<uint8_t>(Client::PacketType::kPlayerRealtimeChange);
+                packet << m_aircraft_identifier;
+                packet << static_cast<uint8_t>(Action::kMissileFire);
+                packet << true;  // Missile button pressed
+                m_socket->send(packet);
+            }
+        }
+        m_missile_state = currentMissilePressed;
     }
 }
 
@@ -172,11 +230,20 @@ void Player::HandleRealtimeNetworkInput(CommandQueue& commands)
 {
     if (m_socket && !IsLocal())
     {
-        // Traverse all realtime input proxies. Because this is a networked game, the input isn't handled directly
-        for (auto pair : m_action_proxies)
+        // Apply fire only when button transitions to pressed (one-shot)
+        if (m_action_proxies[Action::kBulletFire])
         {
-            if (pair.second && IsRealtimeAction(pair.first))
-                commands.Push(m_action_binding[pair.first]);
+            commands.Push(m_action_binding[Action::kBulletFire]);
+            // Reset so it only fires once per press
+            m_action_proxies[Action::kBulletFire] = false;
+        }
+
+        // Apply missile only when button transitions to pressed (one-shot)
+        if (m_action_proxies[Action::kMissileFire])
+        {
+            commands.Push(m_action_binding[Action::kMissileFire]);
+            // Reset so it only fires once per press
+            m_action_proxies[Action::kMissileFire] = false;
         }
     }
 }
@@ -237,14 +304,23 @@ void Player::InitialiseActions()
     m_action_binding[Action::kMoveLeft].action = DerivedAction<Aircraft>(AircraftRotator(-kRotationSpeed));
     m_action_binding[Action::kMoveRight].action = DerivedAction<Aircraft>(AircraftRotator(kRotationSpeed));
     m_action_binding[Action::kMoveUp].action = DerivedAction<Aircraft>(AircraftForwardMover());
-    m_action_binding[Action::kBulletFire].action = DerivedAction<Aircraft>([](Aircraft& a, sf::Time dt)
+    uint8_t player_id = m_identifier;
+     m_action_binding[Action::kBulletFire].action = DerivedAction<Aircraft>([player_id](Aircraft& a, sf::Time dt)
         {
-            a.GetWeaponSystem().Fire();
+            // Only execute on the correct aircraft
+            if (a.GetPlayerID() == static_cast<PlayerID>(player_id))
+            {
+                a.GetWeaponSystem().Fire();
+            }
         }
     );
-    m_action_binding[Action::kMissileFire].action = DerivedAction<Aircraft>([](Aircraft& a, sf::Time dt)
+    m_action_binding[Action::kMissileFire].action = DerivedAction<Aircraft>([player_id](Aircraft& a, sf::Time dt)
         {
-            a.GetWeaponSystem().LaunchMissile();
+            // Only execute on the correct aircraft
+            if (a.GetPlayerID() == static_cast<PlayerID>(player_id))
+            {
+                a.GetWeaponSystem().LaunchMissile();
+            }
         }
     );
 
@@ -258,6 +334,7 @@ bool Player::IsRealTimeAction(Action action)
     case Action::kMoveRight:
     case Action::kMoveUp:
         return true;
+
     default:
         return false;
     }

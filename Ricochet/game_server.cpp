@@ -14,22 +14,31 @@ GameServer::GameServer(sf::Vector2f battlefield_size)
     , m_client_timeout(sf::seconds(5.f))
     , m_max_connected_players(20)
     , m_connected_players(0)
-    , m_battlefield_rect(sf::Vector2f(0.f, 0.f), sf::Vector2f(battlefield_size.x, battlefield_size.y))
+    , m_battlefield_rect(
+        sf::Vector2f(0.f, 0.f),
+        battlefield_size
+    )
     , m_aircraft_count(0)
     , m_peers(m_max_connected_players)
     , m_aircraft_identifier_counter(1)
-    , m_waiting_thread_end(false)
     , m_last_spawn_time(sf::Time::Zero)
     , m_time_for_next_spawn(sf::seconds(5.f))
-    , m_physics_simulator(std::make_unique<PhysicsSimulator>(m_battlefield_rect, sf::View()))
-    , m_thread(&GameServer::ExecutionThread, this)
 {
     m_listener_socket.setBlocking(false);
-    // Pre-allocate all peer slots to prevent out-of-bounds access
+
     for (std::size_t i = 0; i < m_max_connected_players; ++i)
     {
-        m_peers[i].reset(new RemotePeer);
+        m_peers[i] = std::make_unique<RemotePeer>();
     }
+
+    SetListening(true);
+
+    if (!m_listening_state)
+    {
+        return;
+    }
+
+    m_thread = std::thread(&GameServer::ExecutionThread, this);
 }
 
 GameServer::~GameServer()
@@ -77,15 +86,12 @@ void GameServer::SetListening(bool enable)
         if (!m_listening_state)
         {
             m_listening_state = (m_listener_socket.listen(SERVER_PORT) == sf::TcpListener::Status::Done);
-            std::cout << "[GAMESERVER] SetListening(true) - Listening on port " << SERVER_PORT 
-                      << " - State: " << (m_listening_state ? "SUCCESS" : "FAILED") << std::endl;
         }
     }
     else
     {
         m_listener_socket.close();
         m_listening_state = false;
-        std::cout << "[GAMESERVER] SetListening(false) - Listening stopped" << std::endl;
     }
 }
 
@@ -93,10 +99,9 @@ void GameServer::ExecutionThread()
 {
     try
     {
-        std::cout << "[GAMESERVER] ExecutionThread started" << std::endl;
 
         //Initialisation
-        SetListening(true);
+        //SetListening(true);
 
         sf::Time frame_rate = sf::seconds(1.f / 60.f);
         sf::Time frame_time = sf::Time::Zero;
@@ -104,7 +109,6 @@ void GameServer::ExecutionThread()
         sf::Time tick_time = sf::Time::Zero;
         sf::Clock frame_clock, tick_clock;
 
-        std::cout << "[GAMESERVER] Entering main game loop" << std::endl;
 
         while (!m_waiting_thread_end)
         {
@@ -318,14 +322,11 @@ void GameServer::HandleIncomingConnections()
     // Defensive bounds check to prevent out-of-bounds access
     if (m_connected_players >= m_peers.size())
     {
-        std::cout << "[GAMESERVER] WARNING: m_connected_players (" << m_connected_players 
-                  << ") exceeds m_peers size (" << m_peers.size() << "). Cannot accept more connections." << std::endl;
         return;
     }
 
     if (m_listener_socket.accept(m_peers[m_connected_players]->m_socket) == sf::TcpListener::Status::Done)
     {
-        std::cout << "[GAMESERVER] Player attempting to join! Total connected: " << static_cast<int>(m_connected_players + 1) << std::endl;
 
         //Order the new client to spawn its player 1
         // Vary spawn positions based on aircraft identifier to avoid players spawning on top of each other

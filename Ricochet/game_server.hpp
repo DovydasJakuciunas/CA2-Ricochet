@@ -58,8 +58,7 @@ private:
 	void SendToAll(sf::Packet& packet);
 	void UpdateClientState();
 
-private:
-	std::thread m_thread;
+private:	
 	sf::Clock m_clock;
 	sf::TcpListener m_listener_socket;
 	bool m_listening_state;
@@ -81,4 +80,6 @@ private:
 	sf::Time m_time_for_next_spawn;
 
 	std::unique_ptr<PhysicsSimulator> m_physics_simulator;
+
+	std::thread m_thread;
 };

@@ -237,7 +237,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="menu_state.cpp" />
     <ClCompile Include="movement_controller.cpp" />
-    <ClCompile Include="multiplayer_gamestage.cpp" />
+    <ClCompile Include="multiplayer_gamestate.cpp" />
     <ClCompile Include="music_player.cpp" />
     <ClCompile Include="network_node.cpp" />
     <ClCompile Include="network_pause_state.cpp" />

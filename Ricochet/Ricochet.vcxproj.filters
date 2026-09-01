@@ -362,14 +362,14 @@
     <ClCompile Include="gameplay_manager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="multiplayer_gamestage.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="network_pause_state.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="settings_state.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="multiplayer_gamestate.cpp">
+      <Filter>Source Files\States</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

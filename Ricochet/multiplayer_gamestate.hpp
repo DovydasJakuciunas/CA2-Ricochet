@@ -15,6 +15,7 @@ public:
 	virtual void OnActivate();
 	void OnDestroy();
 	void DisableAllRealtimeActions(bool enable);
+	std::optional<sf::IpAddress> GetAddressFromFile();
 
 private:
 	void UpdateBroadcastMessage(sf::Time elapsed_time);
