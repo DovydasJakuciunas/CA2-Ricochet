@@ -16,7 +16,7 @@ constexpr auto kRotationSpeed = 2.5f;
 constexpr auto kMaxBounces = 2;
 
 // PvP win condition - first player to reach this many kills wins
-constexpr auto kKillsToWin = 1;
+constexpr auto kKillsToWin = 3;
 
 // Player colors - stored in array for cleaner organization
 namespace PlayerColors
