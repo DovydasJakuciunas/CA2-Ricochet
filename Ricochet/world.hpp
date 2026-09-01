@@ -1,6 +1,7 @@
 #pragma once
 #include <SFML/Graphics.hpp>
 #include <functional>
+#include <map>
 #include "resource_identifiers.hpp"
 #include "scene_node.hpp"
 #include "scene_layers.hpp"
@@ -15,6 +16,7 @@
 #include "physics_simulator.hpp"
 #include "network_node.hpp"
 #include "gameplay_coordinator.hpp"
+#include "pickup.hpp"
 
 class KeyBinding;
 
@@ -29,7 +31,7 @@ public:
 
 	bool HasAlivePlayer() const;
 
-	void SpawnRandomPickups();
+	void SpawnRandomPickups(sf::Time dt);
 
 	// Multiplayer aircraft management
 	Aircraft* GetAircraft(uint8_t aircraft_id);
@@ -44,8 +46,12 @@ public:
 
 	// Network pickup spawning
 	void SetIsHost(bool is_host);
-	void SpawnPickupFromNetwork(int pickup_type, sf::Vector2f position);
-	void SetPickupBroadcasterCallback(std::function<void(int, sf::Vector2f)> callback);  // Callback to send pickup spawns to clients
+	void SpawnPickupFromNetwork(uint32_t pickup_id, int pickup_type, sf::Vector2f position);
+	void SetPickupBroadcasterCallback(std::function<void(uint32_t, int, sf::Vector2f)> callback);  // Callback to send pickup spawns to clients (id, type, position)
+
+	// Pickup management
+	void CreatePickup(PickupID id, PickupType type, sf::Vector2f position);
+	void RemovePickup(PickupID id);
 
 private:
 	void LoadTextures();
@@ -59,8 +65,6 @@ private:
 
 	// Initialize GameplayCoordinator on first aircraft spawn
 	void InitializeGameplayCoordinator();
-	
-
 
 private:
 	sf::RenderTarget& m_target;
@@ -81,7 +85,7 @@ private:
 	SpriteNode* m_background_sprite;
 	sf::Time m_pickup_spawn_timer;
 	bool m_is_host;  // Track if this World instance is running on the host
-	std::function<void(int, sf::Vector2f)> m_pickup_broadcaster;  // Callback to broadcast pickups to clients
+	std::function<void(uint32_t, int, sf::Vector2f)> m_pickup_broadcaster;  // Callback to broadcast pickups to clients (id, type, position)
 
 	// Subsystems
 	std::unique_ptr<CollisionHandler> m_collision_handler;
@@ -94,6 +98,8 @@ private:
 	std::map<uint8_t, TextNode*> m_player_kill_displays;  // Track kill display GUIs
 	std::vector<Aircraft*> m_players_list;  // Maintained list for GameplayCoordinator
 	NetworkNode* m_network_node;
+
+	std::map<PickupID, Pickup*> m_pickups;
 
 	// Dynamic spawn point management
 	std::vector<sf::Vector2f> m_spawn_points;

@@ -4,11 +4,18 @@
 #include "resource_identifiers.hpp"
 #include "aircraft.hpp"
 #include <SFML/System/Time.hpp>
+#include <cstdint>
+
+using PickupID = std::uint32_t;
 
 class Pickup : public Entity
 {
 public:
-	Pickup(PickupType type, const TextureHolder& textures);
+	Pickup(PickupID id, PickupType type, const TextureHolder& textures);
+
+	PickupID GetID() const { return m_id; }
+	PickupType GetType() const { return m_type; }
+
 	virtual unsigned int GetCategory() const override;
 	void Apply(Aircraft& player);
 	virtual void DrawCurrent(sf::RenderTarget& target, sf::RenderStates states) const;
@@ -16,6 +23,7 @@ public:
 	virtual void UpdateCurrent(sf::Time dt, CommandQueue& commands) override;
 
 private:
+	PickupID m_id;
 	PickupType m_type;
 	sf::Sprite m_sprite;
 	sf::Time m_lifetime;  // Track how long the pickup has existed

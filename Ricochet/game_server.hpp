@@ -22,6 +22,7 @@ public:
 	void NotifyPlayerSpawn(uint8_t aircraft_identifier);
 	void NotifyPlayerRealtimeChange(uint8_t aircraft_identifier, uint8_t action, bool action_enabled);
 	void NotifyPlayerEvent(uint8_t aircraft_identifier, int8_t action);
+	void NotifyPickupSpawn(uint32_t pickup_id, int pickup_type, sf::Vector2f position);
 	NetworkStats GetNetworkStats() const;
 	std::vector<uint8_t> GetAndClearRecentlyDisconnectedAircraft();
 
@@ -102,6 +103,16 @@ private:
 
 	// Track recently disconnected aircraft for host-side GUI cleanup
 	std::vector<uint8_t> m_recently_disconnected_aircraft;
+
+	// Packet batching for pickups - accumulate spawns and send in batches
+	struct PickupSpawnData
+	{
+		uint32_t pickup_id;
+		int32_t pickup_type;
+		float x, y;
+	};
+	std::vector<PickupSpawnData> m_batched_pickup_spawns;
+	void FlushPickupBatch();
 
 	std::thread m_thread;
 };

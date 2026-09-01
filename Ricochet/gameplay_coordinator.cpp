@@ -82,3 +82,11 @@ void GameplayCoordinator::RegisterPlayerKillDisplay(uint8_t playerID, TextNode* 
 		m_gameplay_manager->RegisterPlayer(playerID, kill_display);
 	}
 }
+
+void GameplayCoordinator::SetIsHost(bool is_host)
+{
+	if (m_collision_handler)
+	{
+		m_collision_handler->SetIsHost(is_host);
+	}
+}

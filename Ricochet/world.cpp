@@ -68,6 +68,7 @@ void World::Update(sf::Time dt)
 		{
 			player->Respawn();
 			player->setPosition(GetNextSpawnPoint());
+			m_players_list.push_back(player);  // Re-add respawned player to collision handling
 		}
 	}
 
@@ -93,7 +94,7 @@ void World::Update(sf::Time dt)
 		}
 	}
 
-	SpawnRandomPickups();
+	SpawnRandomPickups(dt);
 }
 
 void World::Draw()
@@ -120,8 +121,9 @@ CommandQueue& World::GetCommandQueue()
 
 bool World::HasAlivePlayer() const
 {
-	// Check if player 1 (ID 0) is alive
-	auto it = m_networked_aircraft.find(0);
+	// Check if player 1 (aircraft ID 1) is alive
+	// Note: aircraft_id starts at 1, not 0
+	auto it = m_networked_aircraft.find(1);
 	return it != m_networked_aircraft.end() && it->second && !it->second->IsMarkedForRemoval();
 }
 
@@ -129,7 +131,7 @@ void World::LoadTextures()
 {
 	m_textures.Load(TextureID::kEntities, "Media/Textures/Entities.png");
 	m_textures.Load(TextureID::kExplosion, "Media/Textures/Explosion.png");
-	
+
 	m_textures.Load(TextureID::kBackground, "Media/Textures/Background.png");
 	m_textures.Load(TextureID::kParticle, "Media/Textures/Particle.png");
 }
@@ -166,20 +168,21 @@ void World::BuildScene()
 	//Add sound effect node
 	std::unique_ptr<SoundNode> soundNode(new SoundNode(m_sounds));
 	m_scene_graph.AttachChild(std::move(soundNode));
-			m_physics_simulator = std::make_unique<PhysicsSimulator>(m_world_bounds, m_camera);
-	}
 
-	void World::SetupNetworkNode()
+	m_physics_simulator = std::make_unique<PhysicsSimulator>(m_world_bounds, m_camera);
+}
+
+void World::SetupNetworkNode()
+{
+	if (!m_network_node)
 	{
-		if (!m_network_node)
-		{
-			std::unique_ptr<NetworkNode> network_node(new NetworkNode());
-			m_network_node = network_node.get();
-			m_scene_graph.AttachChild(std::move(network_node));
-		}
+		std::unique_ptr<NetworkNode> network_node(new NetworkNode());
+		m_network_node = network_node.get();
+		m_scene_graph.AttachChild(std::move(network_node));
 	}
+}
 
-	void World::UpdateSounds()
+void World::UpdateSounds()
 {
 	sf::Vector2f listener_position;
 
@@ -190,10 +193,15 @@ void World::BuildScene()
 	m_sounds.RemoveStoppedSounds();
 }
 
-void World::SpawnRandomPickups()
+void World::SpawnRandomPickups(sf::Time dt)
 {
-	// Spawn pickups every 3 seconds using a fixed timer
-	m_pickup_spawn_timer -= sf::seconds(1.f / 60.f);  // Assuming 60 FPS
+	// Only the host should spawn random pickups in multiplayer
+	// Clients will receive pickups from the server via network packets
+	if (!m_is_host)
+		return;
+
+	// Spawn pickups every 3 seconds using actual frame delta time
+	m_pickup_spawn_timer -= dt;
 
 	if (m_pickup_spawn_timer <= sf::Time::Zero)
 	{
@@ -209,6 +217,12 @@ void World::SpawnRandomPickups()
 			sf::Vector2f(view_bounds.size.x - (border * 2.f), view_bounds.size.y - (border * 2.f))
 		);
 
+		// Validate spawn area is large enough before attempting to spawn pickups
+		if (spawn_area.size.x <= 0.f || spawn_area.size.y <= 0.f)
+		{
+			return;  // Camera view is too small; skip pickup spawning this frame
+		}
+
 		// Random pickup type
 		PickupType type = static_cast<PickupType>(Utility::RandomInt(static_cast<int>(PickupType::kPickupCount)));
 
@@ -216,13 +230,37 @@ void World::SpawnRandomPickups()
 		float random_x = spawn_area.position.x + Utility::RandomInt(static_cast<int>(spawn_area.size.x));
 		float random_y = spawn_area.position.y + Utility::RandomInt(static_cast<int>(spawn_area.size.y));
 
-		std::unique_ptr<Pickup> pickup(new Pickup(type, m_textures));
+		PickupID id = Utility::RandomInt(std::numeric_limits<PickupID>::max());
+		auto pickup = std::make_unique<Pickup>(id, type, m_textures);
 		pickup->setPosition(sf::Vector2f(random_x, random_y));
 		pickup->SetVelocity(0.f, 0.f);
-		
+
+		// Register pickup before attaching to scene
+		m_pickups[id] = pickup.get();
+
+		// Broadcast pickup spawn to all clients
+		if (m_pickup_broadcaster)
+		{
+			m_pickup_broadcaster(id, static_cast<int>(type), sf::Vector2f(random_x, random_y));
+		}
 
 		m_scene_layers[static_cast<int>(SceneLayers::kUpperAir)]->AttachChild(std::move(pickup));
 	}
+}
+
+void World::SetIsHost(bool is_host)
+{
+	m_is_host = is_host;
+	// Also update the GameplayCoordinator's collision handler if it exists
+	if (m_gameplay_coordinator)
+	{
+		m_gameplay_coordinator->SetIsHost(is_host);
+	}
+}
+
+void World::SetPickupBroadcasterCallback(std::function<void(uint32_t, int, sf::Vector2f)> callback)
+{
+	m_pickup_broadcaster = callback;
 }
 
 // Multiplayer aircraft management methods
@@ -261,8 +299,8 @@ Aircraft* World::AddAircraft(uint8_t aircraft_id, PlayerID player_id)
 	}
 
 	// Create kill display TextNode for this player
-	std::string* kill_text = new std::string("");
-	std::unique_ptr<TextNode> kill_display(new TextNode(m_fonts, *kill_text));
+	std::string kill_text("");
+	std::unique_ptr<TextNode> kill_display(new TextNode(m_fonts, kill_text));
 	TextNode* kill_display_ptr = kill_display.get();
 
 	// Position the kill display vertically along the left side of the screen
@@ -420,4 +458,46 @@ void World::InitializeGameplayCoordinator()
 			m_sounds
 		);
 	}
+}
+
+// Pickups
+void World::CreatePickup(
+	PickupID id,
+	PickupType type,
+	sf::Vector2f position)
+{
+	if (m_pickups.contains(id))
+		return;
+
+	auto pickup = std::make_unique<Pickup>(id, type, m_textures);
+	pickup->setPosition(position);
+
+	m_pickups[id] = pickup.get();
+	m_scene_layers[static_cast<int>(SceneLayers::kUpperAir)]
+		->AttachChild(std::move(pickup));
+}
+
+void World::RemovePickup(PickupID id)
+{
+	auto found = m_pickups.find(id);
+	if (found == m_pickups.end())
+		return;
+
+	found->second->Destroy();
+	m_pickups.erase(found);
+}
+
+void World::SpawnPickupFromNetwork(uint32_t pickup_id, int pickup_type, sf::Vector2f position)
+{
+	// Clients spawn pickups received from the server
+	PickupType type = static_cast<PickupType>(pickup_type);
+	PickupID id = pickup_id;  // Use the ID sent from the server
+	auto pickup = std::make_unique<Pickup>(id, type, m_textures);
+	pickup->setPosition(position);
+	pickup->SetVelocity(0.f, 0.f);
+
+	// Register pickup before attaching to scene
+	m_pickups[id] = pickup.get();
+
+	m_scene_layers[static_cast<int>(SceneLayers::kUpperAir)]->AttachChild(std::move(pickup));
 }

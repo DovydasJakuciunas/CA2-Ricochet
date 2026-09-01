@@ -10,12 +10,18 @@
 #include <cmath>
 
 CollisionHandler::CollisionHandler(std::vector<Aircraft*>& players, SceneNode& scene_graph,
-								   CommandQueue& command_queue, SoundPlayer& sounds)
+								   CommandQueue& command_queue, SoundPlayer& sounds, bool is_host)
 	: m_players(players)
 	, m_scene_graph(scene_graph)
 	, m_command_queue(command_queue)
 	, m_sounds(sounds)
+	, m_is_host(is_host)
 {
+}
+
+void CollisionHandler::SetIsHost(bool is_host)
+{
+	m_is_host = is_host;
 }
 
 bool CollisionHandler::MatchesCategories(SceneNode::Pair& colliders, ReceiverCategories type1, ReceiverCategories type2) const
@@ -56,8 +62,14 @@ void CollisionHandler::HandleCollisions()
 		{
 			auto& aircraft = static_cast<Aircraft&>(*pair.first);
 			auto& pickup = static_cast<Pickup&>(*pair.second);
-			//Collision response
-			pickup.Apply(aircraft);
+
+			// Only apply pickup effects on the host
+			// Clients will receive the updated aircraft state through UpdateClientState() packets
+			if (m_is_host)
+			{
+				pickup.Apply(aircraft);
+			}
+
 			pickup.Destroy();
 			aircraft.GetWeaponSystem().PlayLocalSound(m_command_queue, SoundEffect::kCollectPickup);
 		}

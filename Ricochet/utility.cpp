@@ -62,6 +62,12 @@ double Utility::ToDegrees(double angle)
 
 int Utility::RandomInt(int exclusive_max)
 {
+    // Clamp to minimum of 1 to avoid assertion in uniform_int_distribution
+    // If exclusive_max <= 1, we can only return 0
+    if (exclusive_max <= 1)
+    {
+        return 0;
+    }
     std::uniform_int_distribution<> distr(0, exclusive_max - 1);
     return distr(RandomEngine);
 }

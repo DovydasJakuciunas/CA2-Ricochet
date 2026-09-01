@@ -32,6 +32,9 @@ public:
 	// Register a player's kill display UI
 	void RegisterPlayerKillDisplay(uint8_t playerID, TextNode* kill_display);
 
+	// Set whether this coordinator is running on the host (for collision handling)
+	void SetIsHost(bool is_host);
+
 private:
 	// References to game objects
 	std::vector<Aircraft*>& m_players;

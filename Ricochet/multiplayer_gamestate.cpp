@@ -62,6 +62,21 @@ MultiplayerGameState::MultiplayerGameState(StateStack& stack, Context context, b
 	m_network_stats_text.setPosition(sf::Vector2f(10.f, 10.f));
 	m_network_stats_text.setString("Loading network stats...");
 
+	// Inform the World whether this instance is host or client
+	m_world.SetIsHost(m_host);
+
+	// Setup pickup broadcaster callback for host
+	if (m_host)
+	{
+		m_world.SetPickupBroadcasterCallback([this](uint32_t pickup_id, int pickup_type, sf::Vector2f position)
+		{
+			if (m_game_server)
+			{
+				m_game_server->NotifyPickupSpawn(pickup_id, pickup_type, position);
+			}
+		});
+	}
+
 	//Use this for "Attempt to connect" and "Failed to connect" messages
 	m_failed_connection_text.setCharacterSize(35);
 	m_failed_connection_text.setFillColor(sf::Color::White);
@@ -480,6 +495,23 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 	}
 	break;
 
+	case Server::PacketType::kSpawnPickup:
+	{
+		uint32_t pickup_count;
+		packet >> pickup_count;  // Read number of pickups in this batch
+
+		for (uint32_t i = 0; i < pickup_count; ++i)
+		{
+			uint32_t pickup_id;
+			int32_t pickup_type;
+			float x, y;
+			packet >> pickup_id >> pickup_type >> x >> y;
+			m_world.SpawnPickupFromNetwork(pickup_id, pickup_type, sf::Vector2f(x, y));
+		}
+
+	}
+	break;
+
 	case Server::PacketType::kPlayerConnect:
 	{
 		uint8_t aircraft_identifier;
@@ -581,16 +613,6 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 	case Server::PacketType::kMissionSuccess:
 	{
 		RequestStackPush(StateID::kGameOver);
-	}
-	break;
-
-	//Pickup created
-	case Server::PacketType::kSpawnPickup:
-	{
-		uint8_t type;
-		sf::Vector2f position;
-		packet >> type >> position.x >> position.y;
-		m_world.SpawnRandomPickups();
 	}
 	break;
 

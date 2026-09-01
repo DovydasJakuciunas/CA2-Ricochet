@@ -13,8 +13,10 @@ namespace Server
 		kPlayerDisconnect, //Takes sf::Int32 aircraft identifier that is disconnecting
 		kSpawnPickup, //Similar to kSpawnEnemy. sf::Int32 for pickup type in PickupType.hpp and two floats for position
 		kSpawnSelf, //This takes an sf::Int32 for the aircraft identifier and two float values for the initial position. 
-		kUpdateClientState, //This sends aircraft identifier, X position, Y position, and rotation.
-		kMissionSuccess // This has no arguments. It just informs the client that the game is over and the client can show the appropriate state
+		kUpdateClientState, //This sends aircraft identifier, X position, Y position, rotation, health, missile ammo, fire rate, and spread level
+		kMissionSuccess, // This has no arguments. It just informs the client that the game is over and the client can show the appropriate state
+		kPickupCollected,  
+		kDespawnPickup
 	};
 }
 

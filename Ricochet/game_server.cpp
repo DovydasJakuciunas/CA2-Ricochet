@@ -24,7 +24,6 @@ GameServer::GameServer(sf::Vector2f battlefield_size)
     , m_last_spawn_time(sf::Time::Zero)
     , m_time_for_next_spawn(sf::seconds(5.f))
     , m_network_tick_counter(0)
-    , m_total_bytes_sent(0)
 {
     // Initialize all aircraft IDs (1-255) as available for assignment
     for (int id = 1; id < 256; ++id)
@@ -84,6 +83,33 @@ void GameServer::NotifyPlayerEvent(uint8_t aircraft_identifier, int8_t action)
     packet << aircraft_identifier;
     packet << action;
     SendToAll(packet);
+}
+
+void GameServer::NotifyPickupSpawn(uint32_t pickup_id, int pickup_type, sf::Vector2f position)
+{
+    // Queue the pickup spawn for batching instead of sending immediately
+    m_batched_pickup_spawns.push_back({pickup_id, static_cast<int32_t>(pickup_type), position.x, position.y});
+}
+
+void GameServer::FlushPickupBatch()
+{
+    if (m_batched_pickup_spawns.empty())
+    {
+        return;  // Nothing to send
+    }
+
+    // Create a single batch packet containing all pending pickup spawns
+    sf::Packet packet;
+    packet << static_cast<uint8_t>(Server::PacketType::kSpawnPickup);
+    packet << static_cast<uint32_t>(m_batched_pickup_spawns.size());  // Number of pickups in this batch
+
+    for (const auto& spawn : m_batched_pickup_spawns)
+    {
+        packet << spawn.pickup_id << spawn.pickup_type << spawn.x << spawn.y;
+    }
+
+    SendToAll(packet);
+    m_batched_pickup_spawns.clear();  // Clear the batch after sending
 }
 
 void GameServer::SetListening(bool enable)
@@ -193,6 +219,7 @@ void GameServer::Tick()
     if (m_network_tick_counter >= 2)
     {
         UpdateClientState();
+        FlushPickupBatch();  // Flush any queued pickup spawns
         m_network_tick_counter = 0;
     }
 
@@ -552,7 +579,6 @@ void GameServer::SendToAll(sf::Packet& packet)
         if (m_peers[i]->m_ready)
         {
             m_peers[i]->m_socket.send(packet);
-            m_total_bytes_sent += packet.getDataSize();
             {
                 std::lock_guard<std::mutex> lock(m_stats_mutex);
                 m_packets_sent++;
@@ -566,7 +592,6 @@ void GameServer::SendToPeer(RemotePeer& peer, sf::Packet& packet)
     if (peer.m_ready)
     {
         peer.m_socket.send(packet);
-        m_total_bytes_sent += packet.getDataSize();
         {
             std::lock_guard<std::mutex> lock(m_stats_mutex);
             m_packets_sent++;
@@ -628,7 +653,6 @@ NetworkStats GameServer::GetNetworkStats() const
     NetworkStats stats;
     stats.packets_sent = m_packets_sent;
     stats.packets_received = m_packets_received;
-    stats.bytes_sent = m_total_bytes_sent;
     stats.connected_players = m_connected_players;
     return stats;
 }
