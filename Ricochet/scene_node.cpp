@@ -14,6 +14,11 @@ void SceneNode::AttachChild(Ptr child)
 	m_children.emplace_back(std::move(child));
 }
 
+SceneNode* SceneNode::GetParent() const
+{
+	return m_parent;
+}
+
 
 SceneNode::Ptr SceneNode::DetachChild(const SceneNode& node)
 {

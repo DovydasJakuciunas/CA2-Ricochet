@@ -180,6 +180,7 @@
     <ClInclude Include="network_node.hpp" />
     <ClInclude Include="network_pause_state.hpp" />
     <ClInclude Include="network_protocol.hpp" />
+    <ClInclude Include="network_stats.hpp" />
     <ClInclude Include="particle.hpp" />
     <ClInclude Include="particletype.hpp" />
     <ClInclude Include="particle_node.hpp" />
@@ -194,6 +195,7 @@
     <ClInclude Include="receiver_categories.hpp" />
     <ClInclude Include="resource_holder.hpp" />
     <ClInclude Include="resource_identifiers.hpp" />
+    <ClInclude Include="Ricochet\multiplayer_gamestate.hpp" />
     <ClInclude Include="scene_layers.hpp" />
     <ClInclude Include="scene_node.hpp" />
     <ClInclude Include="settings_state.hpp" />

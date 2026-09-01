@@ -11,6 +11,7 @@
 #include <fstream>
 #include "pickup_type.hpp"
 #include <iostream>
+#include <sstream>
 
 std::optional<sf::IpAddress> MultiplayerGameState::GetAddressFromFile()
 {
@@ -50,8 +51,15 @@ MultiplayerGameState::MultiplayerGameState(StateStack& stack, Context context, b
 	, m_broadcast_text(context.fonts->Get(FontID::kMain))
 	, m_player_invitation_text(context.fonts->Get(FontID::kMain))
 	, m_failed_connection_text(context.fonts->Get(FontID::kMain))
+	, m_network_stats_text(context.fonts->Get(FontID::kMain))
 {
 	m_broadcast_text.setPosition(sf::Vector2f(1024.f / 2, 100.f));
+
+	// Initialize network stats display text
+	m_network_stats_text.setCharacterSize(14);
+	m_network_stats_text.setFillColor(sf::Color::Green);
+	m_network_stats_text.setPosition(sf::Vector2f(10.f, 10.f));
+	m_network_stats_text.setString("Loading network stats...");
 
 	//Use this for "Attempt to connect" and "Failed to connect" messages
 	m_failed_connection_text.setCharacterSize(35);
@@ -146,6 +154,12 @@ void MultiplayerGameState::Draw()
 		{
 			m_window.draw(m_broadcast_text);
 		}
+
+		// Draw network statistics overlay
+		if (m_show_stats)
+		{
+			m_window.draw(m_network_stats_text);
+		}
 	}
 	else
 	{
@@ -159,6 +173,16 @@ bool MultiplayerGameState::Update(sf::Time dt)
 	if (m_connected)
 	{
 		m_world.Update(dt);
+
+		// Host: Check for recently disconnected aircraft and clean up their GUI
+		if (m_host && m_game_server)
+		{
+			std::vector<uint8_t> disconnected = m_game_server->GetAndClearRecentlyDisconnectedAircraft();
+			for (uint8_t aircraft_identifier : disconnected)
+			{
+				m_world.RemoveAircraft(aircraft_identifier);
+			}
+		}
 
 		//Remove players whose aircraft were destroyed
 		bool found_local_plane = false;
@@ -260,6 +284,28 @@ bool MultiplayerGameState::Update(sf::Time dt)
 			m_tick_clock.restart();
 		}
 
+		// Update network statistics display every 500ms
+		if (m_stats_update_clock.getElapsedTime() > sf::milliseconds(500))
+		{
+			if (m_game_server)
+			{
+				m_current_stats = m_game_server->GetNetworkStats();
+			}
+
+			// Format the stats text
+			std::stringstream ss;
+			ss << "=== Network Statistics ===\n";
+			ss << "Connected Players: " << static_cast<int>(m_current_stats.connected_players) << "\n";
+			ss << "Packets Sent: " << m_current_stats.packets_sent << "\n";
+			ss << "Packets Received: " << m_current_stats.packets_received << "\n";
+			ss << "Bytes Sent: " << NetworkStats::FormatBytes(m_current_stats.bytes_sent) << "\n";
+			ss << "Bytes Received: " << NetworkStats::FormatBytes(m_current_stats.bytes_received) << "\n";
+			ss << "[Press 'S' to toggle]\n";
+
+			m_network_stats_text.setString(ss.str());
+			m_stats_update_clock.restart();
+		}
+
 		// Print bandwidth stats every 5 seconds
 		if (m_bandwidth_clock.getElapsedTime() > sf::seconds(5.f))
 		{
@@ -304,6 +350,11 @@ bool MultiplayerGameState::HandleEvent(const sf::Event& event)
 		{
 			DisableAllRealtimeActions(false);
 			RequestStackPush(StateID::kNetworkPause);
+		}
+		// Toggle stats display with 'S' key
+		else if (key_pressed->scancode == sf::Keyboard::Scancode::S)
+		{
+			m_show_stats = !m_show_stats;
 		}
 	}
 	else if (event.is<sf::Event::FocusGained>())
@@ -440,6 +491,14 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 	{
 		uint8_t aircraft_identifier;
 		packet >> aircraft_identifier;
+
+		// Unregister the player from the gameplay manager to destroy their GUI
+		GameplayManager* gm = m_world.GetGameplayManager();
+		if (gm)
+		{
+			gm->UnregisterPlayer(aircraft_identifier);
+		}
+
 		m_world.RemoveAircraft(aircraft_identifier);
 		m_players.erase(aircraft_identifier);
 	}

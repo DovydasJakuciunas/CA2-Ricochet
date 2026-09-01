@@ -31,6 +31,9 @@ public:
 	virtual unsigned int GetCategory() const;
 	void RemoveWrecks();
 
+	// Get parent node
+	SceneNode* GetParent() const;
+
 protected:
 	virtual void UpdateCurrent(sf::Time dt, CommandQueue& commands);
 

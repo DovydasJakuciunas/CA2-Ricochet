@@ -37,6 +37,9 @@ public:
 	void RemoveAircraft(uint8_t aircraft_id);
 	void SetupNetworkNode();
 
+	// Gameplay management access
+	GameplayManager* GetGameplayManager();
+
 	bool PollGameAction(GameActions::Action& out);
 
 private:

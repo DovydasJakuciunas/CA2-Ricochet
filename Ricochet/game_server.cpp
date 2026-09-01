@@ -11,7 +11,7 @@
 
 GameServer::GameServer(sf::Vector2f battlefield_size)
     : m_listening_state(false)
-    , m_client_timeout(sf::seconds(5.f))
+    , m_client_timeout(sf::seconds(1.f))
     , m_max_connected_players(15)
     , m_connected_players(0)
     , m_battlefield_rect(
@@ -20,12 +20,17 @@ GameServer::GameServer(sf::Vector2f battlefield_size)
     )
     , m_aircraft_count(0)
     , m_peers(m_max_connected_players)
-    , m_aircraft_identifier_counter(1)
     , m_last_spawn_time(sf::Time::Zero)
     , m_time_for_next_spawn(sf::seconds(5.f))
     , m_network_tick_counter(0)
     , m_total_bytes_sent(0)
 {
+    // Initialize all aircraft IDs (1-255) as available for assignment
+    for (int id = 1; id < 256; ++id)
+    {
+        m_available_aircraft_ids.insert(static_cast<uint8_t>(id));
+    }
+
     m_listener_socket.setBlocking(false);
 
     for (std::size_t i = 0; i < m_max_connected_players; ++i)
@@ -233,19 +238,47 @@ void GameServer::HandleIncomingPackets()
         if (peer->m_ready)
         {
             sf::Packet packet;
-            while (peer->m_socket.receive(packet) == sf::Socket::Status::Done)
-            {
-                //Interpret the packet and react to it
-                HandleIncomingPackets(packet, *peer, detected_timeout);
+            sf::Socket::Status status = peer->m_socket.receive(packet);
 
-                peer->m_last_packet_time = Now();
-                packet.clear();
-            }
-
-            if (Now() > peer->m_last_packet_time + m_client_timeout)
+            if (status == sf::Socket::Status::Disconnected)
             {
+                // Socket closed immediately on receive failure
                 peer->m_timed_out = true;
                 detected_timeout = true;
+            }
+            else if (status == sf::Socket::Status::Done)
+            {
+                // Got a packet - process it
+                do
+                {
+                    //Interpret the packet and react to it
+                    HandleIncomingPackets(packet, *peer, detected_timeout);
+
+                    {
+                        std::lock_guard<std::mutex> lock(m_stats_mutex);
+                        m_packets_received++;
+                    }
+
+                    peer->m_last_packet_time = Now();
+                    packet.clear();
+                    status = peer->m_socket.receive(packet);
+                } while (status == sf::Socket::Status::Done);
+
+                // After processing packets, check if disconnected
+                if (status == sf::Socket::Status::Disconnected)
+                {
+                    peer->m_timed_out = true;
+                    detected_timeout = true;
+                }
+            }
+            else if (status == sf::Socket::Status::NotReady)
+            {
+                // No data available yet, check timeout only if we haven't received anything in a while
+                if (Now() > peer->m_last_packet_time + m_client_timeout)
+                {
+                    peer->m_timed_out = true;
+                    detected_timeout = true;
+                }
             }
         }
     }
@@ -345,32 +378,41 @@ void GameServer::HandleIncomingConnections()
         return;
     }
 
+    // Check if there are any available IDs
+    if (m_available_aircraft_ids.empty())
+    {
+        return;
+    }
+
     if (m_listener_socket.accept(m_peers[m_connected_players]->m_socket) == sf::TcpListener::Status::Done)
     {
+        // Get the lowest available aircraft ID
+        uint8_t aircraft_id = *m_available_aircraft_ids.begin();
+        m_available_aircraft_ids.erase(m_available_aircraft_ids.begin());
 
         //Order the new client to spawn its player 1
         // Vary spawn positions based on aircraft identifier to avoid players spawning on top of each other
-        float spawn_offset_angle = (m_aircraft_identifier_counter - 1) * (3.14159f * 2.f / 4.f); // Distribute around center
+        float spawn_offset_angle = (aircraft_id - 1) * (3.14159f * 2.f / 4.f); // Distribute around center
         float spawn_distance = 150.f;
         sf::Vector2f center(m_battlefield_rect.size.x / 2, m_battlefield_rect.position.y + m_battlefield_rect.size.y / 2);
-        m_aircraft_info[m_aircraft_identifier_counter].m_position = center + sf::Vector2f(
+        m_aircraft_info[aircraft_id].m_position = center + sf::Vector2f(
             std::cos(spawn_offset_angle) * spawn_distance,
             std::sin(spawn_offset_angle) * spawn_distance
         );
-        m_aircraft_info[m_aircraft_identifier_counter].m_hitpoints = 100;
-        m_aircraft_info[m_aircraft_identifier_counter].m_missile_ammo = 2;
+        m_aircraft_info[aircraft_id].m_hitpoints = 100;
+        m_aircraft_info[aircraft_id].m_missile_ammo = 2;
 
         sf::Packet packet;
         packet << static_cast<uint8_t>(Server::PacketType::kSpawnSelf);
-        packet << m_aircraft_identifier_counter;
-        packet << m_aircraft_info[m_aircraft_identifier_counter].m_position.x;
-        packet << m_aircraft_info[m_aircraft_identifier_counter].m_position.y;
+        packet << aircraft_id;
+        packet << m_aircraft_info[aircraft_id].m_position.x;
+        packet << m_aircraft_info[aircraft_id].m_position.y;
 
-        m_peers[m_connected_players]->m_aircraft_identifiers.emplace_back(m_aircraft_identifier_counter);
+        m_peers[m_connected_players]->m_aircraft_identifiers.emplace_back(aircraft_id);
 
         BroadcastMessage("New player");
         InformWorldState(m_peers[m_connected_players]->m_socket);
-        NotifyPlayerSpawn(m_aircraft_identifier_counter++);
+        NotifyPlayerSpawn(aircraft_id);
 
         m_peers[m_connected_players]->m_socket.send(packet);
         m_peers[m_connected_players]->m_ready = true;
@@ -403,6 +445,12 @@ void GameServer::HandleDisconnections()
             {
                 SendToAll((sf::Packet() << static_cast<uint8_t>(Server::PacketType::kPlayerDisconnect) << identifer));
                 m_aircraft_info.erase(identifer);
+
+                // Return the ID to the pool of available IDs
+                m_available_aircraft_ids.insert(identifer);
+
+                // Track this for host-side GUI cleanup
+                m_recently_disconnected_aircraft.push_back(identifer);
             }
 
             m_connected_players--;
@@ -469,6 +517,10 @@ void GameServer::SendToAll(sf::Packet& packet)
         {
             m_peers[i]->m_socket.send(packet);
             m_total_bytes_sent += packet.getDataSize();
+            {
+                std::lock_guard<std::mutex> lock(m_stats_mutex);
+                m_packets_sent++;
+            }
         }
     }
 }
@@ -489,6 +541,24 @@ void GameServer::UpdateClientState()
     }
 
     SendToAll(update_client_state_packet);
+}
+
+NetworkStats GameServer::GetNetworkStats() const
+{
+    std::lock_guard<std::mutex> lock(m_stats_mutex);
+    NetworkStats stats;
+    stats.packets_sent = m_packets_sent;
+    stats.packets_received = m_packets_received;
+    stats.bytes_sent = m_total_bytes_sent;
+    stats.connected_players = m_connected_players;
+    return stats;
+}
+
+std::vector<uint8_t> GameServer::GetAndClearRecentlyDisconnectedAircraft()
+{
+    std::vector<uint8_t> result = m_recently_disconnected_aircraft;
+    m_recently_disconnected_aircraft.clear();
+    return result;
 }
 
 

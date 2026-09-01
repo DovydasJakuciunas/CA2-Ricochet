@@ -7,7 +7,10 @@
 #include <thread>
 #include <cstdint>
 #include <map>
+#include <set>
 #include <memory>
+#include <mutex>
+#include "network_stats.hpp"
 
 class PhysicsSimulator;
 
@@ -19,6 +22,8 @@ public:
 	void NotifyPlayerSpawn(uint8_t aircraft_identifier);
 	void NotifyPlayerRealtimeChange(uint8_t aircraft_identifier, uint8_t action, bool action_enabled);
 	void NotifyPlayerEvent(uint8_t aircraft_identifier, int8_t action);
+	NetworkStats GetNetworkStats() const;
+	std::vector<uint8_t> GetAndClearRecentlyDisconnectedAircraft();
 
 private:
 	struct RemotePeer
@@ -74,7 +79,7 @@ private:
 	std::map<uint8_t, AircraftInfo> m_aircraft_info;
 
 	std::vector<PeerPtr> m_peers;
-	uint8_t m_aircraft_identifier_counter;
+	std::set<uint8_t> m_available_aircraft_ids;
 	bool m_waiting_thread_end;
 
 	sf::Time m_last_spawn_time;
@@ -88,6 +93,14 @@ private:
 	// Bandwidth monitoring
 	size_t m_total_bytes_sent;
 	sf::Clock m_bandwidth_clock;
+
+	// Network statistics tracking
+	mutable std::mutex m_stats_mutex;
+	uint64_t m_packets_sent = 0;
+	uint64_t m_packets_received = 0;
+
+	// Track recently disconnected aircraft for host-side GUI cleanup
+	std::vector<uint8_t> m_recently_disconnected_aircraft;
 
 	std::thread m_thread;
 };

@@ -4,6 +4,8 @@
 #include "player.hpp"
 #include "game_server.hpp"
 #include "network_protocol.hpp"
+#include "network_stats.hpp"
+#include <SFML/Graphics/Text.hpp>
 
 class MultiplayerGameState : public State
 {
@@ -57,4 +59,10 @@ private:
 	size_t m_bytes_sent = 0;
 	size_t m_bytes_received = 0;
 	sf::Clock m_bandwidth_clock;
+
+	// Network statistics display
+	sf::Text m_network_stats_text;
+	NetworkStats m_current_stats;
+	sf::Clock m_stats_update_clock;
+	bool m_show_stats = true;
 };

@@ -222,6 +222,12 @@
     <ClInclude Include="network_pause_state.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="network_stats.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Ricochet\multiplayer_gamestate.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">

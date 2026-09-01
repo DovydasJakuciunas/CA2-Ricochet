@@ -299,10 +299,15 @@ void World::RemoveAircraft(uint8_t aircraft_id)
 	auto it = m_networked_aircraft.find(aircraft_id);
 	if (it != m_networked_aircraft.end())
 	{
-		// Mark the aircraft for removal
+		// Immediately remove the aircraft from the scene graph
 		if (it->second)
 		{
-			it->second->Destroy();
+			// Get the parent and detach the aircraft immediately
+			SceneNode* parent = it->second->GetParent();
+			if (parent)
+			{
+				parent->DetachChild(*it->second);
+			}
 
 			// Remove from players list
 			auto player_it = std::find(m_players_list.begin(), m_players_list.end(), it->second);
@@ -313,14 +318,31 @@ void World::RemoveAircraft(uint8_t aircraft_id)
 		}
 		m_networked_aircraft.erase(it);
 
-		// Clean up kill display
-		m_player_kill_displays.erase(aircraft_id);
+		// Clean up kill display - detach TextNode from scene graph
+		auto display_it = m_player_kill_displays.find(aircraft_id);
+		if (display_it != m_player_kill_displays.end())
+		{
+			if (display_it->second)
+			{
+				SceneNode* text_parent = display_it->second->GetParent();
+				if (text_parent)
+				{
+					text_parent->DetachChild(*display_it->second);
+				}
+			}
+			m_player_kill_displays.erase(display_it);
+		}
 	}
 }
 
 bool World::PollGameAction(GameActions::Action& out)
 {
 	return m_network_node->PollGameAction(out);
+}
+
+GameplayManager* World::GetGameplayManager()
+{
+	return m_gameplay_manager.get();
 }
 
 void World::GenerateSpawnPoints()
