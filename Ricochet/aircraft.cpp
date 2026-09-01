@@ -156,6 +156,9 @@ void Aircraft::UpdateCurrent(sf::Time dt, CommandQueue& commands)
 		m_collision_immunity_remaining -= dt;
 	}
 
+	// Handle network snapshot-based interpolation for remote aircraft
+	UpdateNetworkInterpolation(dt);
+
 	// Apply deceleration if forward key is not pressed and this is the player's aircraft
 	if (m_key_binding)
 	{
@@ -323,3 +326,101 @@ void Aircraft::ApplyDeceleration(sf::Time dt)
 		SetVelocity(0.f, 0.f);
 	}
 }
+
+namespace
+{
+	// Interpolate between two angles using shortest path
+	float InterpolateAngle(float start, float end, float t)
+	{
+		// Normalize angles to [0, 360)
+		while (start < 0) start += 360.f;
+		while (start >= 360) start -= 360.f;
+		while (end < 0) end += 360.f;
+		while (end >= 360) end -= 360.f;
+
+		// Calculate shortest angular distance
+		float delta = end - start;
+		if (delta > 180.f)
+			delta -= 360.f;
+		else if (delta < -180.f)
+			delta += 360.f;
+
+		return start + delta * t;
+	}
+}
+
+void Aircraft::AddNetworkSnapshot(sf::Vector2f position, float rotation)
+{
+	// Add snapshot with current local time
+	m_snapshot_buffer.emplace_back(position, rotation, m_snapshot_clock.getElapsedTime());
+
+	// Keep buffer size bounded
+	while (m_snapshot_buffer.size() > static_cast<size_t>(SNAPSHOT_BUFFER_MAX_SIZE))
+	{
+		m_snapshot_buffer.pop_front();
+	}
+}
+
+void Aircraft::UpdateNetworkInterpolation(sf::Time dt)
+{
+	if (m_snapshot_buffer.size() < 2)
+	{
+		// Not enough snapshots for interpolation
+		return;
+	}
+
+	// Calculate target lookup time (now - 100ms)
+	sf::Time local_now = m_snapshot_clock.getElapsedTime();
+	sf::Time target_time = local_now - sf::milliseconds(INTERPOLATION_DELAY_MS);
+
+	// Find the two snapshots bracketing target_time
+	const NetworkSnapshot* before = nullptr;
+	const NetworkSnapshot* after = nullptr;
+
+	for (size_t i = 0; i < m_snapshot_buffer.size(); ++i)
+	{
+		if (m_snapshot_buffer[i].local_time <= target_time)
+		{
+			before = &m_snapshot_buffer[i];
+		}
+		if (m_snapshot_buffer[i].local_time >= target_time && after == nullptr)
+		{
+			after = &m_snapshot_buffer[i];
+		}
+	}
+
+	// If we found both snapshots, interpolate between them
+	if (before && after)
+	{
+		// Calculate interpolation factor
+		sf::Time time_diff = after->local_time - before->local_time;
+		float t = 0.f;
+		if (time_diff.asMilliseconds() > 0)
+		{
+			t = (target_time.asSeconds() - before->local_time.asSeconds()) / time_diff.asSeconds();
+			t = std::clamp(t, 0.f, 1.f);
+		}
+
+		// Linearly interpolate position
+		sf::Vector2f interpolated_pos = before->position + (after->position - before->position) * t;
+		setPosition(interpolated_pos);
+
+		// Interpolate rotation using shortest angle path
+		float interpolated_rot = InterpolateAngle(before->rotation, after->rotation, t);
+		setRotation(sf::degrees(interpolated_rot));
+	}
+	else if (before)
+	{
+		// Only have "before" snapshot, snap to it
+		setPosition(before->position);
+		setRotation(sf::degrees(before->rotation));
+	}
+	else if (after)
+	{
+		// Only have "after" snapshot, snap to it
+		setPosition(after->position);
+		setRotation(sf::degrees(after->rotation));
+	}
+}
+
+

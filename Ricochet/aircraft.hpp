@@ -8,11 +8,24 @@
 #include "animation.hpp"
 #include "player.hpp"
 #include <memory>
+#include <deque>
 #include <SFML/Window/Keyboard.hpp>
+#include <SFML/System/Clock.hpp>
 
 class WeaponSystem;
 class MovementController;
 class KeyBinding;
+
+// Network snapshot for interpolation
+struct NetworkSnapshot
+{
+	sf::Vector2f position;
+	float rotation;  // in degrees
+	sf::Time local_time;  // local time when snapshot was captured
+
+	NetworkSnapshot(sf::Vector2f pos, float rot, sf::Time time)
+		: position(pos), rotation(rot), local_time(time) {}
+};
 
 class Aircraft : public Entity
 {
@@ -56,6 +69,10 @@ public:
 	// Deceleration when forward key is released
 	void ApplyDeceleration(sf::Time dt);
 
+	// Network snapshot buffering
+	void AddNetworkSnapshot(sf::Vector2f position, float rotation);
+	void UpdateNetworkInterpolation(sf::Time dt);
+
 private:
 	virtual void DrawCurrent(sf::RenderTarget& target, sf::RenderStates states) const;
 	virtual void UpdateCurrent(sf::Time dt, CommandQueue& commands) override;
@@ -92,6 +109,12 @@ private:
 
 	// Key binding for animation
 	const KeyBinding* m_key_binding;
+
+	// Network snapshot buffering (~100ms history)
+	std::deque<NetworkSnapshot> m_snapshot_buffer;
+	sf::Clock m_snapshot_clock;  // local time for lookback
+	static constexpr float SNAPSHOT_BUFFER_MAX_SIZE = 10;  // ~1 second @ 10Hz
+	static constexpr float INTERPOLATION_DELAY_MS = 100.f;  // Display time 100ms in the past
 
 };
 

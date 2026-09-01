@@ -656,10 +656,8 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 
 			if (aircraft && !is_local_plane)
 			{
-				sf::Vector2f current_pos = aircraft->getPosition();
-				sf::Vector2f interpolated_position = current_pos + (aircraft_position - current_pos) * 0.5f;
-				aircraft->setPosition(interpolated_position);
-				aircraft->setRotation(sf::degrees(rotation));
+				// Add snapshot to buffer for interpolation (position, rotation)
+				aircraft->AddNetworkSnapshot(aircraft_position, rotation);
 			}
 		}
 	}
