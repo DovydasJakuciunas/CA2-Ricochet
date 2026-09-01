@@ -133,6 +133,7 @@ Player::Player()
     , m_current_mission_status(MissionStatus::kMissionRunning)
 {
     InitialiseActions();
+    ScopeActionsToOwnedAircraft();
 }
 
 Player::Player(sf::TcpSocket* socket, uint8_t identifier, const KeyBinding* binding, uint8_t aircraft_identifier)
@@ -148,6 +149,23 @@ Player::Player(sf::TcpSocket* socket, uint8_t identifier, const KeyBinding* bind
 	for (auto& pair : m_action_binding)
 	{
 		pair.second.category = static_cast<unsigned int>(ReceiverCategories::kPlayerAircraft);
+	}
+
+	ScopeActionsToOwnedAircraft();
+}
+
+void Player::ScopeActionsToOwnedAircraft()
+{
+	const unsigned int owner_id = static_cast<unsigned int>(m_identifier);
+	for (auto& pair : m_action_binding)
+	{
+		std::function<void(SceneNode&, sf::Time)> inner = pair.second.action;
+		pair.second.action = [inner, owner_id](SceneNode& node, sf::Time dt)
+		{
+			auto* aircraft = dynamic_cast<Aircraft*>(&node);
+			if (aircraft && static_cast<unsigned int>(aircraft->GetPlayerID()) == owner_id)
+				inner(node, dt);
+		};
 	}
 }
 

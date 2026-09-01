@@ -44,6 +44,7 @@ public:
 
 private:
 	void InitialiseActions();
+	void ScopeActionsToOwnedAircraft();
 	static bool IsRealTimeAction(Action action);
 	uint8_t ActionToInputFlag(Action action) const;
 	uint8_t GetCurrentInputFlags() const;
