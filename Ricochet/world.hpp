@@ -81,6 +81,7 @@ private:
 
 	// Multiplayer aircraft management - Player 1 = ID 0, Player 2 = ID 1
 	std::map<uint8_t, Aircraft*> m_networked_aircraft;
+	std::map<uint8_t, TextNode*> m_player_kill_displays;  // Track kill display GUIs
 	std::vector<Aircraft*> m_players_list;  // Maintained list for GameplayCoordinator
 	NetworkNode* m_network_node;
 

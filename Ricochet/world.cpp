@@ -240,6 +240,41 @@ Aircraft* World::AddAircraft(uint8_t aircraft_id, PlayerID player_id)
 		InitializeGameplayCoordinator();
 	}
 
+	// Create kill display TextNode for this player
+	std::string* kill_text = new std::string("");
+	std::unique_ptr<TextNode> kill_display(new TextNode(m_fonts, *kill_text));
+	TextNode* kill_display_ptr = kill_display.get();
+
+	// Position the kill display (in a HUD-like layout) - moved down for better visibility
+	kill_display_ptr->setPosition(sf::Vector2f(10.f + (aircraft_id * 150.f), 50.f));
+
+	// Set larger font size for visibility
+	kill_display_ptr->SetCharacterSize(42);
+
+	// Add border/outline around text
+	kill_display_ptr->SetOutlineThickness(2.f);
+	kill_display_ptr->SetOutlineColor(sf::Color::Black);
+
+	// Add background box with 10 pixel padding
+	kill_display_ptr->SetBackgroundPadding(10.f);
+	kill_display_ptr->SetBackgroundColor(sf::Color(0, 0, 0, 100));  // Semi-transparent black
+	kill_display_ptr->SetBackgroundOutlineColor(sf::Color::White);
+	kill_display_ptr->SetBackgroundOutlineThickness(2.f);
+
+	// Store reference
+	m_player_kill_displays[aircraft_id] = kill_display_ptr;
+
+	// Attach to scene graph (GUI layer - renders on top, in front of all other elements)
+	m_scene_layers[static_cast<int>(SceneLayers::kGUI)]->AttachChild(std::move(kill_display));
+
+	// Register the kill display with GameplayManager via GameplayCoordinator
+	// Note: aircraft_id starts at 1, but GameplayManager expects 0-based player IDs
+	if (m_gameplay_coordinator)
+	{
+		uint8_t player_index = aircraft_id - 1;  // Convert 1-based aircraft_id to 0-based player index
+		m_gameplay_coordinator->RegisterPlayerKillDisplay(player_index, kill_display_ptr);
+	}
+
 	// Add to scene graph
 	m_scene_layers[static_cast<int>(SceneLayers::kUpperAir)]->AttachChild(std::move(aircraft));
 
@@ -264,6 +299,9 @@ void World::RemoveAircraft(uint8_t aircraft_id)
 			}
 		}
 		m_networked_aircraft.erase(it);
+
+		// Clean up kill display
+		m_player_kill_displays.erase(aircraft_id);
 	}
 }
 

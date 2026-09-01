@@ -12,6 +12,7 @@ class CollisionHandler;
 class GameplayManager;
 class PhysicsSimulator;
 class SoundPlayer;
+class TextNode;
 
 class GameplayCoordinator
 {
@@ -27,6 +28,9 @@ public:
 
 	// Player respawning
 	void RespawnDeadPlayers(const std::vector<sf::Vector2f>& spawn_positions);
+
+	// Register a player's kill display UI
+	void RegisterPlayerKillDisplay(uint8_t playerID, TextNode* kill_display);
 
 private:
 	// References to game objects

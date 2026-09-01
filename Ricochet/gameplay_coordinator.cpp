@@ -10,6 +10,7 @@
 #include "utility.hpp"
 #include "pickup.hpp"
 #include "scene_layers.hpp"
+#include "text_node.hpp"
 #include <random>
 #include <iostream>
 
@@ -31,8 +32,8 @@ GameplayCoordinator::GameplayCoordinator(std::vector<Aircraft*>& players, SceneN
 	m_collision_handler = std::make_unique<CollisionHandler>(m_players,
 		m_scene_graph, m_command_queue, m_sounds);
 
-	// Note: GameplayManager will be initialized by World with kill display UI references
-	// m_gameplay_manager = std::make_unique<GameplayManager>(m_players);
+	// Initialize GameplayManager for tracking player kills and UI
+	m_gameplay_manager = std::make_unique<GameplayManager>();
 
 	m_physics_simulator = std::make_unique<PhysicsSimulator>(m_world_bounds, m_camera);
 }
@@ -71,5 +72,13 @@ void GameplayCoordinator::RespawnDeadPlayers(const std::vector<sf::Vector2f>& sp
 			player->Respawn();
 			player->setPosition(spawn_positions[i]);
 		}
+	}
+}
+
+void GameplayCoordinator::RegisterPlayerKillDisplay(uint8_t playerID, TextNode* kill_display)
+{
+	if (m_gameplay_manager)
+	{
+		m_gameplay_manager->RegisterPlayer(playerID, kill_display);
 	}
 }
