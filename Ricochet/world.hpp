@@ -48,6 +48,7 @@ public:
 	void SetIsHost(bool is_host);
 	void SpawnPickupFromNetwork(uint32_t pickup_id, int pickup_type, sf::Vector2f position);
 	void SetPickupBroadcasterCallback(std::function<void(uint32_t, int, sf::Vector2f)> callback);  // Callback to send pickup spawns to clients (id, type, position)
+	void SetPickupCollectedCallback(std::function<void(uint32_t)> callback);  // Callback when pickup is collected (forward to server)
 
 	// Pickup management
 	void CreatePickup(PickupID id, PickupType type, sf::Vector2f position);
@@ -86,6 +87,7 @@ private:
 	sf::Time m_pickup_spawn_timer;
 	bool m_is_host;  // Track if this World instance is running on the host
 	std::function<void(uint32_t, int, sf::Vector2f)> m_pickup_broadcaster;  // Callback to broadcast pickups to clients (id, type, position)
+	std::function<void(uint32_t)> m_pickup_collected_callback;  // Callback when pickup is collected (forward to server)
 
 	// Subsystems
 	std::unique_ptr<CollisionHandler> m_collision_handler;

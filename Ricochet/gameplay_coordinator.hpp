@@ -2,6 +2,7 @@
 #include <SFML/Graphics.hpp>
 #include <memory>
 #include <vector>
+#include <functional>
 #include "command_queue.hpp"
 #include "resource_identifiers.hpp"
 #include "pickup_type.hpp"
@@ -17,6 +18,8 @@ class TextNode;
 class GameplayCoordinator
 {
 public:
+	using PickupCollectedCallback = std::function<void(uint32_t)>;
+
 	GameplayCoordinator(std::vector<Aircraft*>& players, SceneNode& scene_graph,
 		SceneNode* upper_air_layer, const sf::FloatRect& world_bounds, const sf::View& camera,
 		CommandQueue& command_queue, TextureHolder& textures, SoundPlayer& sounds);
@@ -34,6 +37,9 @@ public:
 
 	// Set whether this coordinator is running on the host (for collision handling)
 	void SetIsHost(bool is_host);
+
+	// Set callback for when pickups are collected
+	void SetPickupCollectedCallback(PickupCollectedCallback callback);
 
 private:
 	// References to game objects
@@ -53,4 +59,7 @@ private:
 
 	// Pickup spawning timer
 	sf::Time m_pickup_spawn_timer;
+
+	// Callback for when pickups are collected
+	PickupCollectedCallback m_pickup_collected_callback;
 };

@@ -16,12 +16,18 @@ CollisionHandler::CollisionHandler(std::vector<Aircraft*>& players, SceneNode& s
 	, m_command_queue(command_queue)
 	, m_sounds(sounds)
 	, m_is_host(is_host)
+	, m_pickup_collected_callback(nullptr)
 {
 }
 
 void CollisionHandler::SetIsHost(bool is_host)
 {
 	m_is_host = is_host;
+}
+
+void CollisionHandler::SetPickupCollectedCallback(PickupCollectedCallback callback)
+{
+	m_pickup_collected_callback = callback;
 }
 
 bool CollisionHandler::MatchesCategories(SceneNode::Pair& colliders, ReceiverCategories type1, ReceiverCategories type2) const
@@ -68,6 +74,12 @@ void CollisionHandler::HandleCollisions()
 			if (m_is_host)
 			{
 				pickup.Apply(aircraft);
+			}
+
+			// Notify that pickup was collected (before destroying)
+			if (m_pickup_collected_callback)
+			{
+				m_pickup_collected_callback(pickup.GetID());
 			}
 
 			pickup.Destroy();

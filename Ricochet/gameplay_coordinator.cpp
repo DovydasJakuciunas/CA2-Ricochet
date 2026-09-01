@@ -27,6 +27,7 @@ GameplayCoordinator::GameplayCoordinator(std::vector<Aircraft*>& players, SceneN
 	, m_textures(textures)
 	, m_sounds(sounds)
 	, m_pickup_spawn_timer(sf::seconds(0.f))
+	, m_pickup_collected_callback(nullptr)
 {
 	// Initialize subsystems
 	m_collision_handler = std::make_unique<CollisionHandler>(m_players,
@@ -89,4 +90,14 @@ void GameplayCoordinator::SetIsHost(bool is_host)
 	{
 		m_collision_handler->SetIsHost(is_host);
 	}
+}
+
+void GameplayCoordinator::SetPickupCollectedCallback(PickupCollectedCallback callback)
+{
+	m_pickup_collected_callback = callback;
+	if (m_collision_handler)
+	{
+		m_collision_handler->SetPickupCollectedCallback(callback);
+	}
+}
 }
