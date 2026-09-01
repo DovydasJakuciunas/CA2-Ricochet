@@ -34,7 +34,7 @@ public:
 private:
 	void UpdateKillDisplay(uint8_t playerID, int kill_count);
 
-	// Multi-player kill tracking - Maps playerID to data
+	// Multiplayer kill tracking Maps playerID to data
 	std::map<uint8_t, int> m_player_kills;
 	std::map<uint8_t, TextNode*> m_player_kill_displays;
 	std::map<uint8_t, bool> m_player_was_alive;
