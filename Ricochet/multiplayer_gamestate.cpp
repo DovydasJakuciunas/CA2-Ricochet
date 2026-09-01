@@ -207,6 +207,7 @@ bool MultiplayerGameState::Update(sf::Time dt)
 		if (m_socket.receive(packet) == sf::Socket::Status::Done)
 		{
 			m_time_since_last_packet = sf::seconds(0.f);
+			m_bytes_received += packet.getDataSize();
 			uint8_t packet_type;
 			packet >> packet_type;
 			HandlePacket(packet_type, packet);
@@ -237,6 +238,7 @@ bool MultiplayerGameState::Update(sf::Time dt)
 			packet << game_action.position.y;
 
 			m_socket.send(packet);
+			m_bytes_sent += packet.getDataSize();
 		}
 
 		//Regular position updates
@@ -250,11 +252,27 @@ bool MultiplayerGameState::Update(sf::Time dt)
 			{
 				if (Aircraft* aircraft = m_world.GetAircraft(identifier))
 				{
-					position_update_packet << identifier << aircraft->getPosition().x << aircraft->getPosition().y << static_cast<uint8_t>(aircraft->GetHitPoints()) << static_cast<uint8_t>(aircraft->GetWeaponSystem().GetMissileAmmo());
+					position_update_packet << identifier << aircraft->getPosition().x << aircraft->getPosition().y << aircraft->getRotation().asDegrees();
 				}
 			}
 			m_socket.send(position_update_packet);
+			m_bytes_sent += position_update_packet.getDataSize();
 			m_tick_clock.restart();
+		}
+
+		// Print bandwidth stats every 5 seconds
+		if (m_bandwidth_clock.getElapsedTime() > sf::seconds(5.f))
+		{
+			float elapsed = m_bandwidth_clock.getElapsedTime().asSeconds();
+			float sent_kbps = (m_bytes_sent * 8) / (elapsed * 1000.f);
+			float received_kbps = (m_bytes_received * 8) / (elapsed * 1000.f);
+
+			std::cout << "[BANDWIDTH] Sent: " << sent_kbps << " Kbps (" << m_bytes_sent << " bytes) "
+					  << "| Received: " << received_kbps << " Kbps (" << m_bytes_received << " bytes)" << std::endl;
+
+			m_bytes_sent = 0;
+			m_bytes_received = 0;
+			m_bandwidth_clock.restart();
 		}
 		m_time_since_last_packet += dt;
 	}
@@ -514,26 +532,22 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 		uint8_t aircraft_count;
 		packet >> aircraft_count;
 
-
 		for (uint8_t i = 0; i < aircraft_count; ++i)
 		{
 			sf::Vector2f aircraft_position;
+			float rotation;
 			uint8_t aircraft_identifier;
-			uint8_t hitpoints;
-			uint8_t ammo;
-			packet >> aircraft_identifier >> aircraft_position.x >> aircraft_position.y >> hitpoints >> ammo;
+			packet >> aircraft_identifier >> aircraft_position.x >> aircraft_position.y >> rotation;
 
 			Aircraft* aircraft = m_world.GetAircraft(aircraft_identifier);
 			bool is_local_plane = std::find(m_local_player_identifiers.begin(), m_local_player_identifiers.end(), aircraft_identifier) != m_local_player_identifiers.end();
-
 
 			if (aircraft && !is_local_plane)
 			{
 				sf::Vector2f current_pos = aircraft->getPosition();
 				sf::Vector2f interpolated_position = current_pos + (aircraft_position - current_pos) * 0.5f;
 				aircraft->setPosition(interpolated_position);
-				aircraft->SetHitpoints(hitpoints);
-				aircraft->GetWeaponSystem().SetMissileAmmo(ammo);
+				aircraft->setRotation(sf::degrees(rotation));
 			}
 		}
 	}

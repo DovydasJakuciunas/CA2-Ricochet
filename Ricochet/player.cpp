@@ -202,6 +202,8 @@ void Player::HandleRealTimeInput(CommandQueue& command_queue)
                 packet << static_cast<uint8_t>(Action::kBulletFire);
                 packet << true;  // Fire button pressed
                 m_socket->send(packet);
+
+                std::cout << "[PACKET] Fire packet sent (" << packet.getDataSize() << " bytes)" << std::endl;
             }
         }
         m_fire_state = currentFirePressed;
@@ -220,6 +222,8 @@ void Player::HandleRealTimeInput(CommandQueue& command_queue)
                 packet << static_cast<uint8_t>(Action::kMissileFire);
                 packet << true;  // Missile button pressed
                 m_socket->send(packet);
+
+                std::cout << "[PACKET] Missile packet sent (" << packet.getDataSize() << " bytes)" << std::endl;
             }
         }
         m_missile_state = currentMissilePressed;

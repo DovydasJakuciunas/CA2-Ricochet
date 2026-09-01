@@ -12,7 +12,7 @@
 GameServer::GameServer(sf::Vector2f battlefield_size)
     : m_listening_state(false)
     , m_client_timeout(sf::seconds(5.f))
-    , m_max_connected_players(20)
+    , m_max_connected_players(15)
     , m_connected_players(0)
     , m_battlefield_rect(
         sf::Vector2f(0.f, 0.f),
@@ -23,6 +23,8 @@ GameServer::GameServer(sf::Vector2f battlefield_size)
     , m_aircraft_identifier_counter(1)
     , m_last_spawn_time(sf::Time::Zero)
     , m_time_for_next_spawn(sf::seconds(5.f))
+    , m_network_tick_counter(0)
+    , m_total_bytes_sent(0)
 {
     m_listener_socket.setBlocking(false);
 
@@ -180,8 +182,13 @@ void GameServer::Tick()
         }
     }
 
-    // Now broadcast the corrected positions to all clients
-    UpdateClientState();
+    // Send state updates every 2 ticks (10 Hz network, 20 Hz simulation)
+    m_network_tick_counter++;
+    if (m_network_tick_counter >= 2)
+    {
+        UpdateClientState();
+        m_network_tick_counter = 0;
+    }
 
     //Remove aircraft that have been destroyed
     for (auto itr = m_aircraft_info.begin(); itr != m_aircraft_info.end();)
@@ -194,6 +201,20 @@ void GameServer::Tick()
         {
             ++itr;
         }
+    }
+
+    // Print bandwidth stats every 5 seconds
+    if (m_bandwidth_clock.getElapsedTime() > sf::seconds(5.f))
+    {
+        float elapsed = m_bandwidth_clock.getElapsedTime().asSeconds();
+        float sent_kbps = (m_total_bytes_sent * 8) / (elapsed * 1000.f);
+
+        std::cout << "[SERVER BANDWIDTH] Sent: " << sent_kbps << " Kbps (" 
+                  << m_total_bytes_sent << " bytes) over " << elapsed << " seconds | "
+                  << "Connected players: " << m_connected_players << std::endl;
+
+        m_total_bytes_sent = 0;
+        m_bandwidth_clock.restart();
     }
 
 }
@@ -276,13 +297,12 @@ void GameServer::HandleIncomingPackets(sf::Packet& packet, RemotePeer& receiving
         for (uint8_t i = 0; i < num_aircraft; ++i)
         {
             uint8_t aircraft_identifier;
-            uint8_t aircraft_hitpoints;
-            uint8_t missile_ammo;
             sf::Vector2f aircraft_position;
-            packet >> aircraft_identifier >> aircraft_position.x >> aircraft_position.y >> aircraft_hitpoints >> missile_ammo;
+            float rotation;
+            packet >> aircraft_identifier >> aircraft_position.x >> aircraft_position.y >> rotation;
+
             m_aircraft_info[aircraft_identifier].m_position = aircraft_position;
-            m_aircraft_info[aircraft_identifier].m_hitpoints = aircraft_hitpoints;
-            m_aircraft_info[aircraft_identifier].m_missile_ammo = missile_ammo;
+            m_aircraft_info[aircraft_identifier].m_rotation = rotation;
         }
     }
     break;
@@ -448,23 +468,30 @@ void GameServer::SendToAll(sf::Packet& packet)
         if (m_peers[i]->m_ready)
         {
             m_peers[i]->m_socket.send(packet);
+            m_total_bytes_sent += packet.getDataSize();
         }
     }
 }
 
 void GameServer::UpdateClientState()
 {
+    // Send position/rotation updates (frequent snapshot)
     sf::Packet update_client_state_packet;
     update_client_state_packet << static_cast<uint8_t>(Server::PacketType::kUpdateClientState);
     update_client_state_packet << static_cast<uint8_t>(m_aircraft_count);
 
     for (const auto& aircraft : m_aircraft_info)
     {
-        update_client_state_packet << aircraft.first << aircraft.second.m_position.x << aircraft.second.m_position.y << aircraft.second.m_hitpoints << aircraft.second.m_missile_ammo;
+        update_client_state_packet << aircraft.first 
+                                    << aircraft.second.m_position.x 
+                                    << aircraft.second.m_position.y 
+                                    << aircraft.second.m_rotation;
     }
 
     SendToAll(update_client_state_packet);
 }
+
+
 
 //It is essential to set the sockets to non-blocking - m_socket.setBlocking(false)
 //otherwise the server will hang waiting to read input from a connection

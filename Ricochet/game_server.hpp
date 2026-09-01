@@ -34,6 +34,7 @@ private:
 	struct AircraftInfo
 	{
 		sf::Vector2f m_position;
+		float m_rotation = 0.f;
 		uint8_t m_hitpoints;
 		uint8_t m_missile_ammo;
 		std::map<uint8_t, bool> m_real_time_actions;
@@ -80,6 +81,13 @@ private:
 	sf::Time m_time_for_next_spawn;
 
 	std::unique_ptr<PhysicsSimulator> m_physics_simulator;
+
+	// Network update rate: send state every 2 ticks (10 Hz network, 20 Hz simulation)
+	int m_network_tick_counter;
+
+	// Bandwidth monitoring
+	size_t m_total_bytes_sent;
+	sf::Clock m_bandwidth_clock;
 
 	std::thread m_thread;
 };
