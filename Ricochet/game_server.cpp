@@ -339,6 +339,14 @@ void GameServer::HandleIncomingPackets(sf::Packet& packet, RemotePeer& receiving
         }
     }
     break;
+
+    case Client::PacketType::kHeartbeat:
+    {
+        // Heartbeat received - just reset the timeout timer (handled by receiving packet itself)
+        // No action needed, just acknowledgment through packet reception
+    }
+    break;
+
     case Client::PacketType::kGameEvent:
     {
         uint8_t action;

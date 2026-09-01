@@ -36,7 +36,8 @@ private:
 	sf::TcpSocket m_socket;
 	bool m_connected;
 	std::unique_ptr<GameServer> m_game_server;
-	sf::Clock m_tick_clock;
+	sf::Clock m_state_update_clock;
+	sf::Clock m_heartbeat_clock;
 
 	std::vector<std::string> m_broadcasts;
 	sf::Text m_broadcast_text;

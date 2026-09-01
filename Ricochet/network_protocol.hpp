@@ -24,7 +24,8 @@ namespace Client
 	{
 		kPlayerEvent, // Two sf::Int32, aircraft identifer and event. It is used to request the server to trigger an event on the aircraft
 		kPlayerRealtimeChange, // The same kPlayerEvent, additionally takes a boolean for real time action
-		kStateUpdate, //sf::Int32 with number of local aircraft, for each aircraft send sf::Int32 identifier, two floats for position, health and ammo 
+		kStateUpdate, //sf::Int32 with number of local aircraft, for each aircraft send sf::Int32 identifier, two floats for position, health and ammo
+		kHeartbeat, // Lightweight keepalive packet to prevent client timeout; no payload
 		kGameEvent, //This is for explosions
 		kQuit
 	};

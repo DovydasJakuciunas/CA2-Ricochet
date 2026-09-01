@@ -265,8 +265,7 @@ bool MultiplayerGameState::Update(sf::Time dt)
 			m_bytes_sent += packet.getDataSize();
 		}
 
-		//Regular position updates
-		if (m_tick_clock.getElapsedTime() > sf::seconds(1.f / 20.f))
+		if (m_state_update_clock.getElapsedTime() > sf::seconds(1.f / 10.f))
 		{
 			sf::Packet position_update_packet;
 			position_update_packet << static_cast<uint8_t>(Client::PacketType::kStateUpdate);
@@ -281,7 +280,17 @@ bool MultiplayerGameState::Update(sf::Time dt)
 			}
 			m_socket.send(position_update_packet);
 			m_bytes_sent += position_update_packet.getDataSize();
-			m_tick_clock.restart();
+			m_state_update_clock.restart();
+		}
+
+		// Send heartbeat to prevent timeout during idle periods (~1 Hz, only if no recent position updates)
+		if (m_heartbeat_clock.getElapsedTime() > sf::seconds(1.f))
+		{
+			sf::Packet heartbeat_packet;
+			heartbeat_packet << static_cast<uint8_t>(Client::PacketType::kHeartbeat);
+			m_socket.send(heartbeat_packet);
+			m_bytes_sent += heartbeat_packet.getDataSize();
+			m_heartbeat_clock.restart();
 		}
 
 		// Update network statistics display every 500ms
