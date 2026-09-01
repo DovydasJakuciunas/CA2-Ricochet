@@ -62,6 +62,7 @@ private:
 	void InformWorldState(sf::TcpSocket& socket);
 	void BroadcastMessage(const std::string& message);
 	void SendToAll(sf::Packet& packet);
+	void SendToPeer(RemotePeer& peer, sf::Packet& packet);
 	void UpdateClientState();
 
 private:	

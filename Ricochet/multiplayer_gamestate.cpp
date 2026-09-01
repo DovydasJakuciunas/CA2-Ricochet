@@ -472,10 +472,6 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 		{
 			aircraft->setPosition(aircraft_position);
 		}
-		else
-		{
-			std::cout << "[MULTIPLAYER] ERROR: Failed to add aircraft to world!" << std::endl;
-		}
 
 		// Use player_id (0-based) as the Player's identifier, not aircraft_identifier (1-based)
 		m_players[aircraft_identifier].reset(new Player(&m_socket, static_cast<uint8_t>(player_id), GetContext().keys1, aircraft_identifier));
@@ -496,10 +492,6 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 		if (aircraft)
 		{
 			aircraft->setPosition(aircraft_position);
-		}
-		else
-		{
-			std::cout << "[MULTIPLAYER] ERROR: Failed to add remote aircraft to world!" << std::endl;
 		}
 
 		// Use player_id (0-based) as the Player's identifier, not aircraft_identifier (1-based)
@@ -545,10 +537,6 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 				aircraft->setPosition(aircraft_position);
 				aircraft->SetHitpoints(hitpoints);
 				aircraft->GetWeaponSystem().SetMissileAmmo(missile_ammo);
-			}
-			else
-			{
-				std::cout << "[MULTIPLAYER] ERROR: Failed to add aircraft ID " << static_cast<int>(aircraft_identifier) << std::endl;
 			}
 
 			m_players[aircraft_identifier].reset(new Player(&m_socket, static_cast<uint8_t>(player_id), nullptr, aircraft_identifier));

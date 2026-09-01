@@ -208,19 +208,6 @@ void GameServer::Tick()
         }
     }
 
-    // Print bandwidth stats every 5 seconds
-    if (m_bandwidth_clock.getElapsedTime() > sf::seconds(5.f))
-    {
-        float elapsed = m_bandwidth_clock.getElapsedTime().asSeconds();
-        float sent_kbps = (m_total_bytes_sent * 8) / (elapsed * 1000.f);
-
-        std::cout << "[SERVER BANDWIDTH] Sent: " << sent_kbps << " Kbps (" 
-                  << m_total_bytes_sent << " bytes) over " << elapsed << " seconds | "
-                  << "Connected players: " << m_connected_players << std::endl;
-
-        m_total_bytes_sent = 0;
-        m_bandwidth_clock.restart();
-    }
 
 }
 
@@ -533,22 +520,65 @@ void GameServer::SendToAll(sf::Packet& packet)
     }
 }
 
+void GameServer::SendToPeer(RemotePeer& peer, sf::Packet& packet)
+{
+    if (peer.m_ready)
+    {
+        peer.m_socket.send(packet);
+        m_total_bytes_sent += packet.getDataSize();
+        {
+            std::lock_guard<std::mutex> lock(m_stats_mutex);
+            m_packets_sent++;
+        }
+    }
+}
+
 void GameServer::UpdateClientState()
 {
-    // Send position/rotation updates (frequent snapshot)
-    sf::Packet update_client_state_packet;
-    update_client_state_packet << static_cast<uint8_t>(Server::PacketType::kUpdateClientState);
-    update_client_state_packet << static_cast<uint8_t>(m_aircraft_count);
-
-    for (const auto& aircraft : m_aircraft_info)
+    // Send position/rotation updates, per-peer, skipping each client's own aircraft
+    for (std::size_t i = 0; i < m_connected_players; ++i)
     {
-        update_client_state_packet << aircraft.first 
-                                    << aircraft.second.m_position.x 
-                                    << aircraft.second.m_position.y 
-                                    << aircraft.second.m_rotation;
-    }
+        if (!m_peers[i] || !m_peers[i]->m_ready)
+            continue;
 
-    SendToAll(update_client_state_packet);
+        sf::Packet packet;
+        packet << static_cast<uint8_t>(Server::PacketType::kUpdateClientState);
+
+        // First pass: count aircraft that are NOT owned by this peer
+        uint8_t aircraftCount = 0;
+        for (const auto& [id, aircraft] : m_aircraft_info)
+        {
+            if (std::find(
+                    m_peers[i]->m_aircraft_identifiers.begin(),
+                    m_peers[i]->m_aircraft_identifiers.end(),
+                    id
+                ) == m_peers[i]->m_aircraft_identifiers.end())
+            {
+                ++aircraftCount;
+            }
+        }
+
+        packet << aircraftCount;
+
+        // Second pass: serialize aircraft data for all aircraft NOT owned by this peer
+        for (const auto& [id, aircraft] : m_aircraft_info)
+        {
+            if (std::find(
+                    m_peers[i]->m_aircraft_identifiers.begin(),
+                    m_peers[i]->m_aircraft_identifiers.end(),
+                    id
+                ) == m_peers[i]->m_aircraft_identifiers.end())
+            {
+                packet
+                    << id
+                    << aircraft.m_position.x
+                    << aircraft.m_position.y
+                    << aircraft.m_rotation;
+            }
+        }
+
+        SendToPeer(*m_peers[i], packet);
+    }
 }
 
 NetworkStats GameServer::GetNetworkStats() const
