@@ -270,17 +270,20 @@ bool MultiplayerGameState::Update(sf::Time dt)
 			}
 		}
 
-		//Handle messages from the server that may have arrived
 		sf::Packet packet;
-		if (m_socket.receive(packet) == sf::Socket::Status::Done)
+		bool received_any = false;
+		while (m_socket.receive(packet) == sf::Socket::Status::Done)
 		{
+			received_any = true;
 			m_time_since_last_packet = sf::seconds(0.f);
 			m_bytes_received += packet.getDataSize();
 			uint8_t packet_type;
 			packet >> packet_type;
 			HandlePacket(packet_type, packet);
+			packet.clear();
 		}
-		else
+
+		if (!received_any)
 		{
 			//Check for timeout with the server
 			if (m_time_since_last_packet > m_client_timeout)
