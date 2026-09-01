@@ -10,6 +10,7 @@
 class Aircraft;
 class CommandQueue;
 class SoundPlayer;
+class GameplayManager;
 
 class CollisionHandler
 {
@@ -23,6 +24,9 @@ public:
 	void SetIsHost(bool is_host);
 	void SetPickupCollectedCallback(PickupCollectedCallback callback);
 
+	// Set the gameplay manager used to attribute kills to the shooter
+	void SetGameplayManager(GameplayManager* gameplay_manager);
+
 private:
 	bool MatchesCategories(SceneNode::Pair& colliders, ReceiverCategories type1, ReceiverCategories type2) const;
 
@@ -33,4 +37,5 @@ private:
 	SoundPlayer& m_sounds;
 	bool m_is_host;
 	PickupCollectedCallback m_pickup_collected_callback;
+	GameplayManager* m_gameplay_manager;
 };

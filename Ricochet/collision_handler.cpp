@@ -7,6 +7,7 @@
 #include "sound_player.hpp"
 #include "sound_effect.hpp"
 #include "weapon_system.hpp"
+#include "gameplay_manager.hpp"
 #include <cmath>
 
 CollisionHandler::CollisionHandler(std::vector<Aircraft*>& players, SceneNode& scene_graph,
@@ -17,12 +18,18 @@ CollisionHandler::CollisionHandler(std::vector<Aircraft*>& players, SceneNode& s
 	, m_sounds(sounds)
 	, m_is_host(is_host)
 	, m_pickup_collected_callback(nullptr)
+	, m_gameplay_manager(nullptr)
 {
 }
 
 void CollisionHandler::SetIsHost(bool is_host)
 {
 	m_is_host = is_host;
+}
+
+void CollisionHandler::SetGameplayManager(GameplayManager* gameplay_manager)
+{
+	m_gameplay_manager = gameplay_manager;
 }
 
 void CollisionHandler::SetPickupCollectedCallback(PickupCollectedCallback callback)
@@ -93,6 +100,14 @@ void CollisionHandler::HandleCollisions()
 			// In PvP, player can be damaged by other players' projectiles
 			if (projectile.GetOwnerPlayerID() != player.GetPlayerID())
 			{
+				// Record who last damaged this player so a kill can be attributed to them
+				if (m_gameplay_manager)
+				{
+					m_gameplay_manager->SetPlayerLastDamager(
+						static_cast<uint8_t>(player.GetPlayerID()),
+						static_cast<uint8_t>(projectile.GetOwnerPlayerID()));
+				}
+
 				player.Damage(projectile.GetDamage());
 				projectile.Destroy();
 			}

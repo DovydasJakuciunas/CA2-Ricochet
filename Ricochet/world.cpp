@@ -66,6 +66,12 @@ void World::Update(sf::Time dt)
 		Aircraft* player = pair.second;
 		if (player && player->IsMarkedForRemoval())
 		{
+			// Award a point to whoever last damaged this player before respawning
+			if (GameplayManager* gameplay_manager = GetGameplayManager())
+			{
+				gameplay_manager->OnPlayerDeath(static_cast<uint8_t>(player->GetPlayerID()));
+			}
+
 			player->Respawn();
 			player->setPosition(GetNextSpawnPoint());
 			m_players_list.push_back(player);  // Re-add respawned player to collision handling
@@ -410,6 +416,11 @@ bool World::PollGameAction(GameActions::Action& out)
 
 GameplayManager* World::GetGameplayManager()
 {
+	// The active gameplay manager lives inside the GameplayCoordinator
+	if (m_gameplay_coordinator)
+	{
+		return m_gameplay_coordinator->GetGameplayManager();
+	}
 	return m_gameplay_manager.get();
 }
 

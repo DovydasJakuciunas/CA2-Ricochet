@@ -22,6 +22,7 @@ public:
 	void NotifyPlayerEvent(uint8_t aircraft_identifier, int8_t action);
 	void NotifyPickupSpawn(uint32_t pickup_id, int pickup_type, sf::Vector2f position);
 	void NotifyPickupCollected(uint32_t pickup_id);
+	void NotifyMissionSuccess();
 	NetworkStats GetNetworkStats() const;
 	std::vector<uint8_t> GetAndClearRecentlyDisconnectedAircraft();
 

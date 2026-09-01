@@ -36,6 +36,9 @@ GameplayCoordinator::GameplayCoordinator(std::vector<Aircraft*>& players, SceneN
 	// Initialize GameplayManager for tracking player kills and UI
 	m_gameplay_manager = std::make_unique<GameplayManager>();
 
+	// Let the collision handler attribute kills to the shooter
+	m_collision_handler->SetGameplayManager(m_gameplay_manager.get());
+
 	m_physics_simulator = std::make_unique<PhysicsSimulator>(m_world_bounds, m_camera);
 }
 
@@ -82,6 +85,11 @@ void GameplayCoordinator::RegisterPlayerKillDisplay(uint8_t playerID, TextNode* 
 	{
 		m_gameplay_manager->RegisterPlayer(playerID, kill_display);
 	}
+}
+
+GameplayManager* GameplayCoordinator::GetGameplayManager()
+{
+	return m_gameplay_manager.get();
 }
 
 void GameplayCoordinator::SetIsHost(bool is_host)

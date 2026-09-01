@@ -35,11 +35,12 @@ struct NetworkStats
 	{
 		std::stringstream ss;
 		ss << "=== Network Statistics ===\n";
+		ss << "Transport: TCP (reliable, no packet loss)\n";
 		ss << "Connected Players: " << connected_players << "\n";
-		ss << "Packets Sent: " << packets_sent << "\n";
-		ss << "Packets Received: " << packets_received << "\n";
-		ss << "Bytes Sent: " << FormatBytes(bytes_sent) << "\n";
-		ss << "Bytes Received: " << FormatBytes(bytes_received) << "\n";
+		ss << "Packets Out: " << packets_sent << "\n";
+		ss << "Packets In: " << packets_received << "\n";
+		ss << "Bytes Out: " << FormatBytes(bytes_sent) << "\n";
+		ss << "Bytes In: " << FormatBytes(bytes_received) << "\n";
 		return ss.str();
 	}
 };

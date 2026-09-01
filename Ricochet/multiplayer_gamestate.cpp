@@ -228,25 +228,11 @@ bool MultiplayerGameState::Update(sf::Time dt)
 			}
 		}
 
-		//Remove players whose aircraft were destroyed
-		bool found_local_plane = false;
 		for (auto itr = m_players.begin(); itr != m_players.end();)
 		{
-			//Check if there are no more local planes for remote clients
-			if (std::find(m_local_player_identifiers.begin(), m_local_player_identifiers.end(), itr->first) != m_local_player_identifiers.end())
-			{
-				found_local_plane = true;
-			}
-
 			if (!m_world.GetAircraft(itr->first))
 			{
 				itr = m_players.erase(itr);
-
-				//No more players left : Mission failed
-				if (m_players.empty())
-				{
-					RequestStackPush(StateID::kGameOver);
-				}
 			}
 			else
 			{
@@ -254,9 +240,23 @@ bool MultiplayerGameState::Update(sf::Time dt)
 			}
 		}
 
-		if (!found_local_plane && m_game_started)
+		//Win condition: first player to reach kKillsToWin kills wins the game.
+		//Only the host (authoritative) checks the score and then broadcasts
+		//kMissionSuccess to every client so they all see the Game Over screen.
+		if (m_host && m_game_server && m_game_started && !m_mission_over)
 		{
-			RequestStackPush(StateID::kGameOver);
+			if (GameplayManager* gameplay_manager = m_world.GetGameplayManager())
+			{
+				for (const auto& [playerID, kills] : gameplay_manager->GetAllPlayerKills())
+				{
+					if (kills >= kKillsToWin)
+					{
+						m_mission_over = true;
+						m_game_server->NotifyMissionSuccess();
+						break;
+					}
+				}
+			}
 		}
 
 		//Handle all realtime input for players with correct PlayerID
@@ -559,7 +559,8 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 		GameplayManager* gm = m_world.GetGameplayManager();
 		if (gm)
 		{
-			gm->UnregisterPlayer(aircraft_identifier);
+			// Registration uses a 0-based player index, aircraft_identifier is 1-based
+			gm->UnregisterPlayer(aircraft_identifier - 1);
 		}
 
 		m_world.RemoveAircraft(aircraft_identifier);
@@ -631,6 +632,11 @@ void MultiplayerGameState::HandlePacket(uint8_t packet_type, sf::Packet& packet)
 	//Should tell what player has won and how many points
 	case Server::PacketType::kMissionSuccess:
 	{
+		if (GameplayManager* gameplay_manager = m_world.GetGameplayManager())
+		{
+			GetContext().player->SetGameplayManager(gameplay_manager);
+		}
+		m_mission_over = true;
 		RequestStackPush(StateID::kGameOver);
 	}
 	break;

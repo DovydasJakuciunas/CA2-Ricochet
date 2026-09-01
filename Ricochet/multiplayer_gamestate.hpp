@@ -70,4 +70,7 @@ private:
 	// Pause state
 	bool m_paused = false;
 	sf::Text m_pause_text;
+
+	// PvP win condition - set once the mission has concluded to avoid re-triggering
+	bool m_mission_over = false;
 };

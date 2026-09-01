@@ -110,6 +110,15 @@ void GameServer::NotifyPickupCollected(uint32_t pickup_id)
     m_batched_pickup_despawns.push_back(pickup_id);
 }
 
+void GameServer::NotifyMissionSuccess()
+{
+    std::lock_guard<std::recursive_mutex> lock(m_state_mutex);
+    sf::Packet packet;
+    //First thing in every packet is what type of packet it is
+    packet << static_cast<uint8_t>(Server::PacketType::kMissionSuccess);
+    SendToAll(packet);
+}
+
 void GameServer::FlushPickupBatch()
 {
     if (m_batched_pickup_spawns.empty())
